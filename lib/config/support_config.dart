@@ -1,0 +1,9 @@
+const supportTelegramHandle = '@freshmantricks';
+const supportTelegramUrl = 'https://t.me/freshmantricks';
+const supportPhoneNumber = '0927052140';
+const supportPhoneUrl = 'tel:0927052140';
+const supportEmail = 'support@freshmantricks.com';
+const supportEmailUrl =
+    'mailto:support@freshmantricks.com?subject=Freshman%20Support';
+const supportWebsiteHost = 'www.freshmantricks.com';
+const supportWebsiteUrl = 'https://www.freshmantricks.com';

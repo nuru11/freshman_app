@@ -1,0 +1,4 @@
+#include "Debug.xcconfig"
+PRODUCT_BUNDLE_IDENTIFIER=com.vectoracademy.app
+APP_DISPLAY_NAME=Entrance Tricks
+ASSETCATALOG_COMPILER_APPICON_NAME=AppIcon-vector_academy

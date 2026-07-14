@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "vector_academy (debug)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--flavor",
+        "vector_academy",
+        "--dart-define=FLAVOR=vector_academy"
+      ]
+    },
+    {
+      "name": "exitexam (debug)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--flavor",
+        "exitexam",
+        "--dart-define=FLAVOR=exitexam"
+      ]
+    }
+  ]
+}

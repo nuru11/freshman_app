@@ -1,0 +1,4 @@
+#include "Release.xcconfig"
+PRODUCT_BUNDLE_IDENTIFIER=com.ethioexitexam.app
+APP_DISPLAY_NAME=Ethio Exit Exam
+ASSETCATALOG_COMPILER_APPICON_NAME=AppIcon-exitexam

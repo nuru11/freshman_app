@@ -1,0 +1,7 @@
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/images/freshmanlogo.png
+  android_adaptive_icon_background: "#0F766E"
+  remove_alpha_ios: true
+  flavor: freshman
