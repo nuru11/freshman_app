@@ -166,8 +166,8 @@ class PrivacyPolicyDialog extends StatelessWidget {
                       'Questions or Concerns?\n\n'
                           'If you have any questions about this Privacy Policy or how we handle your data, please contact us:\n\n'
                           '• Through the support section in the app\n'
-                          '• Via our website: freshmantricks.com\n'
-                          '• Email: support@freshmantricks.com\n'
+                          '• Via our website: entrancetricks.com\n'
+                          '• Email: freshmantricks2015@gmail.com\n'
                           '• For account/data deletion requests, include your registered phone number and account details so we can verify ownership\n\n'
                           'We typically respond within 48 hours.',
                     ),

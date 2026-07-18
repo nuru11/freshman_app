@@ -56,7 +56,7 @@ android {
         create("freshman") {
             dimension = "app"
             applicationId = "com.freshmantricks.app"
-            resValue("string", "app_name", "Freshman")
+            resValue("string", "app_name", "Freshman Tricks")
         }
         create("vector_academy") {
             dimension = "app"

@@ -1,9 +1,9 @@
-const supportTelegramHandle = '@freshmantricks';
-const supportTelegramUrl = 'https://t.me/freshmantricks';
-const supportPhoneNumber = '0927052140';
-const supportPhoneUrl = 'tel:0927052140';
-const supportEmail = 'support@freshmantricks.com';
+const supportTelegramHandle = '@Freshman_tricks_admin';
+const supportTelegramUrl = 'https://t.me/freshman_tricks_admin';
+const supportPhoneNumber = '0902100732';
+const supportPhoneUrl = 'tel:0902100732';
+const supportEmail = 'freshmantricks2015@gmail.com';
 const supportEmailUrl =
-    'mailto:support@freshmantricks.com?subject=Freshman%20Support';
-const supportWebsiteHost = 'www.freshmantricks.com';
-const supportWebsiteUrl = 'https://www.freshmantricks.com';
+    'mailto:freshmantricks2015@gmail.com?subject=Freshman%20Support';
+const supportWebsiteHost = 'entrancetricks.com';
+const supportWebsiteUrl = 'https://entrancetricks.com';

@@ -39,10 +39,10 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="freshmantricks.com" />
+                    android:host="entrancetricks.com" />
                 <data
                     android:scheme="https"
-                    android:host="www.freshmantricks.com" />
+                    android:host="www.entrancetricks.com" />
             </intent-filter>
             <!-- Custom URL Scheme (fallback) -->
             <intent-filter>

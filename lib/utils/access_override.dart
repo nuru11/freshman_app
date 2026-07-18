@@ -7,7 +7,7 @@ String _digitsOnly(String? value) {
 }
 
 /// Full access when the logged-in user's phone matches [allowed] entries.
-/// Handles formats like `927052140`, `0927052140`, `+251927052140`.
+/// Handles formats like `902100732`, `0902100732`, `+251902100732`.
 bool hasFullAccessOverrideForPhone(String? phoneNumber) {
   final digits = _digitsOnly(phoneNumber);
   if (digits.isEmpty) return false;

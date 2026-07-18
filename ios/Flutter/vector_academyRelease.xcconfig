@@ -1,3 +1,4 @@
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release-vector_academy.xcconfig"
 #include "Release.xcconfig"
 PRODUCT_BUNDLE_IDENTIFIER=com.vectoracademy.app
 APP_DISPLAY_NAME=Entrance Tricks

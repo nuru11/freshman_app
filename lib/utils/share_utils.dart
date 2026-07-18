@@ -1,6 +1,6 @@
 class ShareUtils {
   /// Base URL for deep links
-  static const String baseUrl = 'freshmantricks.com';
+  static const String baseUrl = 'entrancetricks.com';
 
   /// Custom scheme for deep links
   static const String customScheme = 'freshmantricks';
