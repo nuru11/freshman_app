@@ -16,7 +16,7 @@ class ExamPage extends StatelessWidget {
         backgroundColor: const Color(0xFFF7F4EF),
         appBar: AppBar(
           title: Text(
-            'Practice Quizzes',
+            'Exams',
             style: TextStyle(
               color: Colors.black87,
               fontWeight: FontWeight.bold,

@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -16,9 +17,23 @@ class ImagePickerPermissions {
     // iOS 14+ uses PHPicker for gallery; no prior photo permission needed.
     if (Platform.isIOS && source == ImageSource.gallery) return true;
 
+    // Android 13+: gallery uses system Photo Picker — no permission needed.
+    if (Platform.isAndroid && source == ImageSource.gallery) {
+      final sdkInt = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
+      if (sdkInt >= 33) return true;
+      return _requestPermission(Permission.storage, source);
+    }
+
     final permission = _permissionForSource(source);
     if (permission == null) return true;
 
+    return _requestPermission(permission, source);
+  }
+
+  static Future<bool> _requestPermission(
+    Permission permission,
+    ImageSource source,
+  ) async {
     var status = await permission.status;
     if (status.isGranted || status.isLimited) return true;
 
@@ -50,6 +65,7 @@ class ImagePickerPermissions {
       case ImageSource.camera:
         return Permission.camera;
       case ImageSource.gallery:
+        if (Platform.isAndroid) return Permission.storage;
         return Permission.photos;
     }
   }

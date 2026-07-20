@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/views/home/home_dashboard.dart';
 import 'package:vector_academy/views/subject/subject_page.dart';
-import 'package:vector_academy/views/news/news_page.dart';
+import 'package:vector_academy/views/exam/exam_page.dart';
 import 'package:vector_academy/views/study_planner/study_planner_page.dart';
 import 'package:vector_academy/views/common/profile_page.dart';
 import 'package:vector_academy/controllers/controllers.dart';
@@ -17,7 +17,7 @@ class Home extends StatelessWidget {
     final pages = [
       HomeDashboard(),
       const SubjectPage(embeddedInTab: true),
-      const NewsPage(),
+      const ExamPage(),
       const StudyPlannerPage(),
       const ProfilePage(embeddedInTab: true),
     ];
@@ -43,9 +43,9 @@ class Home extends StatelessWidget {
                 label: 'My $subjectsLabel',
               ),
               const NavigationDestination(
-                icon: Icon(Icons.campaign_outlined),
-                selectedIcon: Icon(Icons.campaign_rounded),
-                label: 'News',
+                icon: Icon(Icons.quiz_outlined),
+                selectedIcon: Icon(Icons.quiz_rounded),
+                label: 'Exam',
               ),
               const NavigationDestination(
                 icon: Icon(Icons.event_note_outlined),

@@ -206,28 +206,12 @@ class HomeDashboardController extends GetxController {
     }
   }
 
-  Future<void> loadDashboardData() async {
-    _isLoading = true;
-    update();
-
-    try {
-      final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
-
-      _subjects = await SubjectsService().getSubjects(device.id, gradeId: 1);
-      logger.i(_subjects.map((e) => e.isLocked).toList()[0]);
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to load dashboard data');
-      logger.e(e);
-    } finally {
-      _isLoading = false;
-      _rebuildLookups();
-      _runUnifiedSearch();
-      update();
-    }
-  }
-
   Future<void> refreshData() async {
-    await loadDashboardData();
+    loadAppHeader();
+    await Future.wait([
+      loadSubjects(),
+      loadFeaturedUpdates(showLoader: false),
+    ]);
     Get.snackbar(
       'Refreshed',
       'Dashboard data updated successfully',
@@ -245,13 +229,8 @@ class HomeDashboardController extends GetxController {
   }
 
   void viewAllExams() {
-    // Navigate to exams page (index 2 in bottom navigation)
+    // Navigate to exam page (index 2 in bottom navigation)
     Get.find<MainNavigationController>().changeIndex(2);
-  }
-
-  void viewAllNews() {
-    // Navigate to news page (index 3 in bottom navigation)
-    Get.find<MainNavigationController>().changeIndex(3);
   }
 
   void openExam(int examId) {

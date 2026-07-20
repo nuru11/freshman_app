@@ -352,7 +352,7 @@ class DeepLinkService {
     _navigateToRoute(VIEWS.home.path);
     Future.delayed(const Duration(milliseconds: 300), () {
       if (Get.isRegistered<MainNavigationController>()) {
-        Get.find<MainNavigationController>().changeIndex(1);
+        Get.find<MainNavigationController>().changeIndex(2);
       }
     });
   }

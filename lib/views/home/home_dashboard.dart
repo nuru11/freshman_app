@@ -271,7 +271,7 @@ class HomeDashboard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: FreshmanSurfaceCard(
           child: Text(
-            'No campus updates right now. Check News for announcements.',
+            'No campus updates right now. Check Exam for practice quizzes.',
             style: theme.textTheme.bodyMedium?.copyWith(color: onSurfaceVariant),
           ),
         ),
@@ -491,8 +491,8 @@ class HomeDashboard extends StatelessWidget {
               onTap: () => nav.changeIndex(1),
             ),
             item(
-              icon: Icons.campaign_outlined,
-              title: 'News',
+              icon: Icons.quiz_outlined,
+              title: 'Exam',
               selected: nav.currentIndex == 2,
               onTap: () => nav.changeIndex(2),
             ),
