@@ -103,36 +103,6 @@ class UnifiedQuestionWidget extends StatelessWidget {
 
     html.write('</div>');
 
-    // Add instruction if available
-    if (question.instruction != null && question.instruction!.trim().isNotEmpty) {
-      html.write('''
-        <div style="
-          padding: 12px;
-          margin-bottom: 16px;
-          background-color: #f3f4f6;
-          border: 1px solid #d1d5db;
-          border-radius: 8px;
-          display: flex;
-          align-items: flex-start;
-        ">
-          <div style="
-            margin-right: 8px;
-            color: #6b7280;
-            font-size: 20px;
-            line-height: 1;
-          ">ℹ️</div>
-          <div style="
-            flex: 1;
-            color: #374151;
-            font-size: 14px;
-            line-height: 1.5;
-          ">
-            ${_processText(question.instruction!)}
-          </div>
-        </div>
-      ''');
-    }
-
     // Add question content
     html.write('<div style="margin-bottom: 24px;">');
     html.write(_processText(question.content));

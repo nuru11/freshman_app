@@ -9,6 +9,7 @@ export 'ui/custom_badges.dart';
 export 'ui/custom_avatars.dart';
 export 'ui/loading_components.dart';
 export 'ui/exam/question_card.dart';
+export 'ui/exam/question_note_screen.dart';
 export 'ui/exam/choice_card.dart';
 export 'ui/exam/unified_question_widget.dart';
 export 'ui/dialog/terms_and_conditions_dialog.dart';

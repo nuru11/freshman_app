@@ -66,36 +66,6 @@ class QuestionCard extends StatelessWidget {
             SizedBox(height: 20),
           ],
 
-          // Instruction if available
-          if (question.instruction != null && question.instruction!.trim().isNotEmpty) ...[
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: theme.colorScheme.secondary.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: theme.colorScheme.secondary,
-                    size: 20,
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: _buildInstructionContent(context),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 16),
-          ],
-
           // Question Content
           _buildQuestionContent(context),
 
@@ -116,53 +86,6 @@ class QuestionCard extends StatelessWidget {
       constraints: BoxConstraints(minHeight: 60),
       child: _questionView(question.content),
     );
-  }
-
-  Widget _buildInstructionContent(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return TeXView(
-      child: TeXViewDocument(_buildInstructionTeXContent(question.instruction!)),
-      style: TeXViewStyle(
-        contentColor: theme.colorScheme.onSecondaryContainer,
-        backgroundColor: Colors.transparent,
-        textAlign: TeXViewTextAlign.left,
-        padding: TeXViewPadding.all(4),
-        margin: TeXViewMargin.all(0),
-      ),
-    );
-  }
-
-  String _buildInstructionTeXContent(String text) {
-    // Convert LaTeX expressions to proper TeX format (similar to question content)
-    String processedText = text;
-
-    // Handle display math ($$...$$)
-    processedText = processedText.replaceAllMapped(
-      RegExp(r'\$\$([^$]+)\$\$'),
-      (match) =>
-          '<div style="text-align: center; font-size: 16px; margin: 8px 0;">\\(${match.group(1)}\\)</div>',
-    );
-
-    // Handle inline math ($...$)
-    processedText = processedText.replaceAllMapped(
-      RegExp(r'\$([^$]+)\$'),
-      (match) => '\\(${match.group(1)}\\)',
-    );
-
-    // Handle bold text (**text**)
-    processedText = processedText.replaceAllMapped(
-      RegExp(r'\*\*(.*?)\*\*'),
-      (match) => '<strong>${match.group(1)}</strong>',
-    );
-
-    // Handle italic text (*text*)
-    processedText = processedText.replaceAllMapped(
-      RegExp(r'\*(.*?)\*'),
-      (match) => '<em>${match.group(1)}</em>',
-    );
-
-    return processedText;
   }
 
   Widget _buildQuestionImage(BuildContext context) {

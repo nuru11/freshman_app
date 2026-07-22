@@ -16,6 +16,7 @@ Question _$QuestionFromJson(Map<String, dynamic> json) => Question(
   imagePath: json['image_path'] as String?,
   explanation: json['explanation'] as String?,
   instruction: json['instruction'] as String?,
+  instructionImage: json['instruction_image'] as String?,
   hasUserAnswered: json['has_user_answered'] as bool? ?? false,
 );
 
@@ -28,6 +29,7 @@ Map<String, dynamic> _$QuestionToJson(Question instance) => <String, dynamic>{
   'explanation': instance.explanation,
   'has_user_answered': instance.hasUserAnswered,
   'instruction': instance.instruction,
+  'instruction_image': instance.instructionImage,
 };
 
 Choice _$ChoiceFromJson(Map<String, dynamic> json) => Choice(

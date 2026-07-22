@@ -60,6 +60,11 @@ class QuestionPage extends StatelessWidget {
           return _buildResultsPage(context, controller);
         }
 
+        if (controller.showingNoteInterstitial.value &&
+            controller.noteInterstitialQuestion != null) {
+          return _buildNoteInterstitialScaffold(context, controller);
+        }
+
         return Scaffold(
           backgroundColor: Theme.of(context).colorScheme.surface,
           appBar: _buildAppBar(context, controller),
@@ -111,6 +116,33 @@ class QuestionPage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildNoteInterstitialScaffold(
+    BuildContext context,
+    QuestionPageController controller,
+  ) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      appBar: _buildAppBar(context, controller),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (showTimer) _buildTimer(context, controller),
+            Expanded(
+              child: QuestionNoteScreen(
+                question: controller.noteInterstitialQuestion!,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: _buildNavigationSection(context, controller),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -191,43 +223,6 @@ class QuestionPage extends StatelessWidget {
 
             SizedBox(height: 16),
 
-            // Instruction if available
-            if (question.instruction != null &&
-                question.instruction!.trim().isNotEmpty) ...[
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.secondaryContainer.withValues(
-                    alpha: 0.5,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: theme.colorScheme.secondary.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: theme.colorScheme.secondary,
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: _buildInstructionContent(
-                        context,
-                        question.instruction!,
-                        question.id,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 16),
-            ],
-
             // Question content with LaTeX support
             _buildQuestionContent(context, question.content, question.id),
 
@@ -275,29 +270,6 @@ class QuestionPage extends StatelessWidget {
       return TeXWidget(key: ValueKey('question_$questionId'), math: content);
     } else {
       return Text(content, style: TextStyle(fontSize: 12));
-    }
-  }
-
-  Widget _buildInstructionContent(
-    BuildContext context,
-    String instruction,
-    int questionId,
-  ) {
-    final theme = Theme.of(context);
-    if (LaTeXUtils.containsLaTeX(instruction)) {
-      return TeXWidget(
-        key: ValueKey('instruction_$questionId'),
-        math: instruction,
-      );
-    } else {
-      return Text(
-        instruction,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSecondaryContainer,
-          fontSize: 12,
-          height: 1.4,
-        ),
-      );
     }
   }
 
@@ -816,7 +788,9 @@ class QuestionPage extends StatelessWidget {
           ),
           child: Obx(
             () => Text(
-              '${controller.currentQuestionIndex.value + 1} / ${controller.questions.length}',
+              controller.showingNoteInterstitial.value
+                  ? 'Note'
+                  : '${controller.currentQuestionIndex.value + 1} / ${controller.questions.length}',
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.onSecondaryContainer,
                 fontWeight: FontWeight.bold,
@@ -833,7 +807,7 @@ class QuestionPage extends StatelessWidget {
             // Previous button
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: controller.currentQuestionIndex.value > 0
+                onPressed: controller.canMoveToPrevious
                     ? controller.previousQuestion
                     : null,
                 icon: Icon(Icons.arrow_back),
@@ -852,9 +826,11 @@ class QuestionPage extends StatelessWidget {
             // Next/Submit button
             Expanded(
               child: Obx(() {
+                final onNoteScreen = controller.showingNoteInterstitial.value;
                 final isLastQuestion =
+                    !onNoteScreen &&
                     controller.currentQuestionIndex.value ==
-                    controller.questions.length - 1;
+                        controller.questions.length - 1;
                 final canProceed = controller.canMoveToNext;
                 final isSubmitting = controller.isSubmitting.value;
 

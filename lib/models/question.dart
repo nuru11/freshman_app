@@ -20,6 +20,9 @@ class Question {
 
   String? instruction;
 
+  @JsonKey(name: 'instruction_image')
+  String? instructionImage;
+
   Question({
     required this.id,
     required this.content,
@@ -28,8 +31,26 @@ class Question {
     this.imagePath,
     this.explanation,
     this.instruction,
+    this.instructionImage,
     this.hasUserAnswered = false,
   });
+
+  bool get hasInstructionNote =>
+      (instruction != null && instruction!.trim().isNotEmpty) ||
+      (instructionImage != null && instructionImage!.trim().isNotEmpty);
+
+  bool hasSameNoteAs(Question other) {
+    return (instruction ?? '').trim() == (other.instruction ?? '').trim() &&
+        (instructionImage ?? '').trim() ==
+            (other.instructionImage ?? '').trim();
+  }
+
+  static bool isNoteBlockStart(List<Question> questions, int index) {
+    if (index < 0 || index >= questions.length) return false;
+    if (!questions[index].hasInstructionNote) return false;
+    if (index == 0) return true;
+    return !questions[index].hasSameNoteAs(questions[index - 1]);
+  }
 
   factory Question.fromJson(Map<String, dynamic> json) =>
       _$QuestionFromJson(json);

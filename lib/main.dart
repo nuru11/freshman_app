@@ -39,7 +39,7 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       title: FlavorConfig.appTitle,
       theme: lightTheme(context),
-      debugShowCheckedModeBanner: true, // Remove debug banner
+      debugShowCheckedModeBanner: false,
       getPages: [
         GetPage(
           name: VIEWS.home.path,

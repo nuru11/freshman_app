@@ -19,8 +19,11 @@ class QuestionPageController extends GetxController {
   final RxBool showAnswers = false.obs;
   final RxBool showSolution = false.obs;
   final RxBool isSubmitting = false.obs; // Track submission status
+  final RxBool showingNoteInterstitial = false.obs;
   final RxList<bool> submittedQuestions =
       <bool>[].obs; // Track which questions have been submitted
+
+  int? noteBlockStartIndex;
 
   // Timer
   Timer? _timer;
@@ -131,17 +134,60 @@ class QuestionPageController extends GetxController {
   }
 
   void previousQuestion() {
-    if (questions.isNotEmpty && currentQuestionIndex.value > 0) {
-      currentQuestionIndex.value--;
-      showSolution.value = false; // Reset solution state when navigating
+    if (questions.isEmpty) return;
+
+    if (showingNoteInterstitial.value) {
+      if (noteBlockStartIndex != null && noteBlockStartIndex! > 0) {
+        currentQuestionIndex.value = noteBlockStartIndex! - 1;
+      }
+      _clearNoteInterstitial();
+      showSolution.value = false;
       update();
       _persistProgress();
+      return;
     }
+
+    final current = currentQuestionIndex.value;
+    if (current <= 0) return;
+
+    if (Question.isNoteBlockStart(questions, current)) {
+      noteBlockStartIndex = current;
+      showingNoteInterstitial.value = true;
+      showSolution.value = false;
+      update();
+      return;
+    }
+
+    currentQuestionIndex.value--;
+    showSolution.value = false; // Reset solution state when navigating
+    update();
+    _persistProgress();
   }
 
   void nextQuestion() async {
-    if (questions.isEmpty ||
-        currentQuestionIndex.value >= questions.length - 1) {
+    if (questions.isEmpty) return;
+
+    if (showingNoteInterstitial.value) {
+      if (noteBlockStartIndex != null) {
+        currentQuestionIndex.value = noteBlockStartIndex!;
+      }
+      _clearNoteInterstitial();
+      showSolution.value = false;
+      update();
+      _persistProgress();
+      return;
+    }
+
+    if (currentQuestionIndex.value >= questions.length - 1) {
+      return;
+    }
+
+    final nextIndex = currentQuestionIndex.value + 1;
+    if (Question.isNoteBlockStart(questions, nextIndex)) {
+      noteBlockStartIndex = nextIndex;
+      showingNoteInterstitial.value = true;
+      showSolution.value = false;
+      update();
       return;
     }
 
@@ -151,14 +197,36 @@ class QuestionPageController extends GetxController {
     _persistProgress();
   }
 
+  Question? get noteInterstitialQuestion {
+    if (noteBlockStartIndex == null) return null;
+    if (noteBlockStartIndex! < 0 || noteBlockStartIndex! >= questions.length) {
+      return null;
+    }
+    return questions[noteBlockStartIndex!];
+  }
+
+  void _clearNoteInterstitial() {
+    showingNoteInterstitial.value = false;
+    noteBlockStartIndex = null;
+  }
+
   /// Check if next button should be enabled
   bool get canMoveToNext {
+    if (showingNoteInterstitial.value) return true;
+
     if (userAnswers[currentQuestionIndex.value] == null) {
       return false; // No answer selected
     }
 
     // Just need an answer selected, no submission required
     return true;
+  }
+
+  bool get canMoveToPrevious {
+    if (showingNoteInterstitial.value) {
+      return noteBlockStartIndex != null && noteBlockStartIndex! > 0;
+    }
+    return currentQuestionIndex.value > 0;
   }
 
   void goToQuestion(int index) {
