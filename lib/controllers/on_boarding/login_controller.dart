@@ -45,7 +45,10 @@ class LoginController extends GetxController {
         Get.offAllNamed(VIEWS.home.path);
         AppSnackbar.showSuccessAfterNav('Success', 'Login successful!');
       } on ApiException catch (e) {
-        AppSnackbar.showError('Login Failed', e.message);
+        AppSnackbar.showError(
+          'Login Failed',
+          ApiErrorMessage.from(e, fallback: 'Invalid credentials. Please try again.'),
+        );
       } on DioException catch (e) {
         AppSnackbar.showError(
           'Login Failed',

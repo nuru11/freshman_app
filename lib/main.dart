@@ -40,6 +40,15 @@ class MyApp extends StatelessWidget {
       title: FlavorConfig.appTitle,
       theme: lightTheme(context),
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        return Overlay(
+          initialEntries: [
+            OverlayEntry(
+              builder: (_) => child ?? const SizedBox.shrink(),
+            ),
+          ],
+        );
+      },
       getPages: [
         GetPage(
           name: VIEWS.home.path,

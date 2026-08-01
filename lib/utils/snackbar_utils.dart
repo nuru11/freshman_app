@@ -7,12 +7,51 @@ enum _SnackbarKind { success, error, warning, info }
 
 class AppSnackbar {
   static void _closeExisting() {
-    if (Get.isSnackbarOpen) {
-      Get.closeAllSnackbars();
+    try {
+      if (Get.isSnackbarOpen) {
+        Get.closeAllSnackbars();
+      }
+    } catch (_) {
+      // Ignore close failures so they never block showing a new message.
+    }
+
+    try {
+      final ctx = _messengerContext;
+      if (ctx != null) {
+        ScaffoldMessenger.of(ctx).hideCurrentSnackBar();
+      }
+    } catch (_) {
+      // Ignore messenger close failures.
     }
   }
 
-  static void _show(
+  static BuildContext? get _messengerContext =>
+      Get.overlayContext ?? Get.context ?? Get.key.currentContext;
+
+  static void _showScaffoldFallback({
+    required String title,
+    required String message,
+    required Color backgroundColor,
+    required Duration duration,
+  }) {
+    final ctx = _messengerContext;
+    if (ctx == null) return;
+
+    ScaffoldMessenger.of(ctx).showSnackBar(
+      SnackBar(
+        content: Text(
+          '$title\n$message',
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        duration: duration,
+      ),
+    );
+  }
+
+  static void _showNow(
     _SnackbarKind kind,
     String title,
     String message, {
@@ -47,16 +86,48 @@ class AppSnackbar {
         break;
     }
 
-    Get.snackbar(
-      title,
-      message,
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: backgroundColor,
-      colorText: Colors.white,
-      borderRadius: 12,
-      margin: const EdgeInsets.all(16),
-      duration: duration ?? defaultDuration,
-      icon: Icon(icon, color: Colors.white),
+    final effectiveDuration = duration ?? defaultDuration;
+
+    try {
+      if (_messengerContext == null) {
+        _showScaffoldFallback(
+          title: title,
+          message: message,
+          backgroundColor: backgroundColor,
+          duration: effectiveDuration,
+        );
+        return;
+      }
+
+      Get.snackbar(
+        title,
+        message,
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: backgroundColor,
+        colorText: Colors.white,
+        borderRadius: 12,
+        margin: const EdgeInsets.all(16),
+        duration: effectiveDuration,
+        icon: Icon(icon, color: Colors.white),
+      );
+    } catch (_) {
+      _showScaffoldFallback(
+        title: title,
+        message: message,
+        backgroundColor: backgroundColor,
+        duration: effectiveDuration,
+      );
+    }
+  }
+
+  static void _show(
+    _SnackbarKind kind,
+    String title,
+    String message, {
+    Duration? duration,
+  }) {
+    _showAfterFrame(
+      () => _showNow(kind, title, message, duration: duration),
     );
   }
 
@@ -64,7 +135,22 @@ class AppSnackbar {
     void Function() show, {
     Duration delay = Duration.zero,
   }) {
-    SchedulerBinding.instance.addPostFrameCallback((_) {
+    final scheduler = SchedulerBinding.instance;
+    if (scheduler.schedulerPhase == SchedulerPhase.idle) {
+      // Already between frames; still defer to next frame so overlay is ready.
+      scheduler.addPostFrameCallback((_) {
+        if (delay == Duration.zero) {
+          show();
+          return;
+        }
+        Future.delayed(delay, show);
+      });
+      // Force a frame if nothing else is scheduled.
+      scheduler.scheduleFrame();
+      return;
+    }
+
+    scheduler.addPostFrameCallback((_) {
       if (delay == Duration.zero) {
         show();
         return;
@@ -98,7 +184,7 @@ class AppSnackbar {
     Duration delay = const Duration(milliseconds: 100),
   }) {
     _showAfterFrame(
-      () => showSuccess(title, message, duration: duration),
+      () => _showNow(_SnackbarKind.success, title, message, duration: duration),
       delay: delay,
     );
   }
@@ -110,7 +196,7 @@ class AppSnackbar {
     Duration delay = const Duration(milliseconds: 100),
   }) {
     _showAfterFrame(
-      () => showError(title, message, duration: duration),
+      () => _showNow(_SnackbarKind.error, title, message, duration: duration),
       delay: delay,
     );
   }
@@ -122,7 +208,7 @@ class AppSnackbar {
     Duration delay = const Duration(milliseconds: 100),
   }) {
     _showAfterFrame(
-      () => showWarning(title, message, duration: duration),
+      () => _showNow(_SnackbarKind.warning, title, message, duration: duration),
       delay: delay,
     );
   }
@@ -134,25 +220,36 @@ class AppSnackbar {
     Duration delay = const Duration(milliseconds: 100),
   }) {
     _showAfterFrame(
-      () => showInfo(title, message, duration: duration),
+      () => _showNow(_SnackbarKind.info, title, message, duration: duration),
       delay: delay,
     );
   }
 
   static void showLoading(String title, String message) {
-    _closeExisting();
-    Get.snackbar(
-      title,
-      message,
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: primaryColor,
-      colorText: Colors.white,
-      borderRadius: 12,
-      margin: const EdgeInsets.all(16),
-      duration: const Duration(days: 1),
-      showProgressIndicator: true,
-      progressIndicatorBackgroundColor: Colors.white,
-      icon: const Icon(Icons.hourglass_empty, color: Colors.white),
-    );
+    _showAfterFrame(() {
+      _closeExisting();
+      try {
+        Get.snackbar(
+          title,
+          message,
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: primaryColor,
+          colorText: Colors.white,
+          borderRadius: 12,
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(days: 1),
+          showProgressIndicator: true,
+          progressIndicatorBackgroundColor: Colors.white,
+          icon: const Icon(Icons.hourglass_empty, color: Colors.white),
+        );
+      } catch (_) {
+        _showScaffoldFallback(
+          title: title,
+          message: message,
+          backgroundColor: primaryColor,
+          duration: const Duration(seconds: 4),
+        );
+      }
+    });
   }
 }
