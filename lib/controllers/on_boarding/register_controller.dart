@@ -73,7 +73,10 @@ class RegisterController extends GetxController {
       gradeOptions.sort((a, b) => a.name.compareTo(b.name));
       update();
     } catch (e) {
-      Get.snackbar('Error', 'Failed to load grades');
+      AppSnackbar.showError(
+        'Error',
+        ApiErrorMessage.from(e, fallback: 'Failed to load grades'),
+      );
     }
   }
 
@@ -89,13 +92,9 @@ class RegisterController extends GetxController {
 
   void register() async {
     if (!_hasAcceptedPrivacyPolicy) {
-      Get.snackbar(
+      AppSnackbar.showWarning(
         'Privacy Policy Required',
         'Please accept the Privacy Policy and Terms & Conditions to continue',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 3),
       );
       return;
     }
@@ -122,43 +121,32 @@ class RegisterController extends GetxController {
           response.tokens.refresh,
         );
 
-        await DeviceService().registerDevice(user.phoneNumber);
+        try {
+          await DeviceService().registerDevice(user.phoneNumber);
+        } catch (e) {
+          logger.w('Device registration failed after register: $e');
+        }
 
         Get.offAllNamed(VIEWS.home.path);
-
-        Get.snackbar(
+        AppSnackbar.showSuccessAfterNav(
           'Success',
           'Registration successful! Please verify your phone number.',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-
-        // Navigate to verify phone page
-      } on DioException catch (e) {
-        Get.snackbar(
-          'Registration Failed',
-          e.toString(),
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
         );
       } on ApiException catch (e) {
-        Get.snackbar(
+        AppSnackbar.showError('Registration Failed', e.message);
+      } on DioException catch (e) {
+        AppSnackbar.showError(
           'Registration Failed',
-          e.message,
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+          ApiErrorMessage.from(e, fallback: 'Registration failed. Please try again.'),
         );
       } catch (e) {
         logger.e(e.toString());
-        Get.snackbar(
+        AppSnackbar.showError(
           'Error',
-          'Registration failed. Please try again.',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+          ApiErrorMessage.from(
+            e,
+            fallback: 'Registration failed. Please try again.',
+          ),
         );
       } finally {
         _setLoading(false);

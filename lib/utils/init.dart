@@ -18,6 +18,7 @@ Future<void> initialize() async {
   await HiveSubjectsStorage().init();
   await HiveAuthStorage().init();
   await HiveUserStorage().init();
+  await HiveDeviceStorage().init();
   await HiveExamStorage().init();
   await HiveQuizzesStorage().init();
   await HiveNoteStorage().init();

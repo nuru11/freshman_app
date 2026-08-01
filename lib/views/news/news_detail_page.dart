@@ -106,7 +106,7 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
       actions: [
         IconButton(
           icon: const Icon(Icons.share_outlined),
-          onPressed: () => _shareNews(context),
+          onPressed: _shareNews,
         ),
       ],
       body: ListView(
@@ -237,7 +237,7 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
     return (wordCount / 200).ceil().clamp(1, 60);
   }
 
-  Future<void> _shareNews(BuildContext context) async {
+  Future<void> _shareNews() async {
     if (_news == null) return;
 
     try {
@@ -246,14 +246,11 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
       await Share.share(shareText, subject: _news!.title);
     } catch (e) {
       logger.e('Error sharing news: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to share news'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
+      AppSnackbar.showError(
+        'Error',
+        'Failed to share news',
+        duration: const Duration(seconds: 2),
+      );
     }
   }
 }

@@ -12,8 +12,9 @@ class SubjectsService extends GetxController {
     required int gradeId,
   }) async {
     try {
+      final package = Uri.encodeQueryComponent(backendAppPackage);
       final response = await apiClient.get(
-        '/app/subjects?grade=$gradeId&device=$deviceId',
+        '/app/subjects?grade=$gradeId&device=$deviceId&app_package=$package',
         authenticated: true,
       );
       logger.i('Subjects response');

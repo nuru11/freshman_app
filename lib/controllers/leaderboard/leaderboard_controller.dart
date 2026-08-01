@@ -7,6 +7,7 @@ import 'package:vector_academy/services/api/success_stories.dart';
 import 'package:vector_academy/utils/storages/storages.dart';
 import 'package:vector_academy/utils/device/device.dart';
 import 'package:vector_academy/utils/utils.dart';
+import 'package:vector_academy/services/api/exceptions.dart';
 
 enum LeaderboardType { competition, exam }
 
@@ -175,6 +176,12 @@ class LeaderboardController extends GetxController {
       final cachedCompetitions = await _cacheStorage.getCompetitions();
       _competitions = cachedCompetitions;
       _isAutoSelecting = false;
+      if (_competitions.isEmpty) {
+        AppSnackbar.showError(
+          'Error',
+          ApiErrorMessage.from(e, fallback: 'Failed to load competitions'),
+        );
+      }
     } finally {
       _isLoadingCompetitions = false;
       update();
@@ -233,6 +240,12 @@ class LeaderboardController extends GetxController {
       final cachedExams = await _examStorage.getExams();
       _exams = cachedExams.where((e) => e.examType != 'quiz').toList();
       _isAutoSelecting = false;
+      if (_exams.isEmpty) {
+        AppSnackbar.showError(
+          'Error',
+          ApiErrorMessage.from(e, fallback: 'Failed to load exams'),
+        );
+      }
     } finally {
       _isLoadingExams = false;
       update();
@@ -361,12 +374,20 @@ class LeaderboardController extends GetxController {
           _error = null;
           _isShowingOfflineData = true;
         } else {
-          _error = e.toString();
+          _error = ApiErrorMessage.from(
+            e,
+            fallback: 'Failed to load leaderboard',
+          );
           _leaderboardEntries = [];
+          AppSnackbar.showError('Error', _error!);
         }
       } else {
-        _error = e.toString();
+        _error = ApiErrorMessage.from(
+          e,
+          fallback: 'Failed to load leaderboard',
+        );
         _leaderboardEntries = [];
+        AppSnackbar.showError('Error', _error!);
       }
     } finally {
       _isLoading = false;

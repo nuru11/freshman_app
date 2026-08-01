@@ -211,7 +211,7 @@ class PDFReaderController extends GetxController {
 
   void sharePDF() {
     // TODO: Implement PDF sharing
-    Get.snackbar('Info', 'Share functionality will be implemented');
+    AppSnackbar.showInfo('Info', 'Share functionality will be implemented');
   }
 
   Future<void> retryInitialization() async {

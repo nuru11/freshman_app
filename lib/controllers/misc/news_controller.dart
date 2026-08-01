@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:vector_academy/views/news/news_detail_page.dart';
 import 'package:vector_academy/services/services.dart';
+import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/utils/utils.dart';
 import 'package:vector_academy/utils/storages/storages.dart';
@@ -52,7 +53,10 @@ class NewsController extends GetxController {
         _applyNewsData(cachedNews);
         _isShowingOfflineData = true;
       } else {
-        Get.snackbar('Error', 'Failed to load news');
+        AppSnackbar.showError(
+          'Error',
+          ApiErrorMessage.from(e, fallback: 'Failed to load news'),
+        );
       }
       logger.e(e);
     } finally {

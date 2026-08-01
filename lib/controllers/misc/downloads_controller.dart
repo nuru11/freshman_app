@@ -4,6 +4,7 @@ import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/utils/utils.dart';
 import 'package:vector_academy/utils/storages/storages.dart';
 import 'package:vector_academy/services/services.dart';
+import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/utils/device/device.dart';
 import 'dart:io';
 import 'package:vector_academy/views/common/video_player_screen.dart';
@@ -177,12 +178,12 @@ class DownloadsController extends GetxController {
   // Download video
   Future<void> downloadVideo(Video video) async {
     if (video.isDownloaded) {
-      Get.snackbar('Info', 'Video is already downloaded');
+      AppSnackbar.showInfo('Info', 'Video is already downloaded');
       return;
     }
 
     if (video.isDownloading || activeVideoDownloads.containsKey(video.id)) {
-      Get.snackbar('Info', 'Video is already being downloaded');
+      AppSnackbar.showInfo('Info', 'Video is already being downloaded');
       return;
     }
 
@@ -225,12 +226,7 @@ class DownloadsController extends GetxController {
           onVideoCompleted?.call(video.id, path);
           update();
 
-          Get.snackbar(
-            'Success',
-            'Video downloaded successfully',
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-          );
+          AppSnackbar.showSuccess('Success', 'Video downloaded successfully');
         },
         onError: (error) {
           video.isDownloading = false;
@@ -241,7 +237,10 @@ class DownloadsController extends GetxController {
           onVideoError?.call(video.id);
           update();
 
-          Get.snackbar('Error', 'Failed to download video');
+          AppSnackbar.showError(
+            'Error',
+            ApiErrorMessage.from(error, fallback: 'Failed to download video'),
+          );
         },
       );
     } catch (e) {
@@ -253,7 +252,10 @@ class DownloadsController extends GetxController {
       onVideoError?.call(video.id);
       update();
 
-      Get.snackbar('Error', 'Failed to download video');
+      AppSnackbar.showError(
+        'Error',
+        ApiErrorMessage.from(e, fallback: 'Failed to download video'),
+      );
     }
   }
 
@@ -282,12 +284,12 @@ class DownloadsController extends GetxController {
   // Download note
   Future<void> downloadNote(Note note) async {
     if (note.isDownloaded) {
-      Get.snackbar('Info', 'Note is already downloaded');
+      AppSnackbar.showInfo('Info', 'Note is already downloaded');
       return;
     }
 
     if (note.isDownloading || activeNoteDownloads.containsKey(note.id)) {
-      Get.snackbar('Info', 'Note is already being downloaded');
+      AppSnackbar.showInfo('Info', 'Note is already being downloaded');
       return;
     }
 
@@ -329,12 +331,7 @@ class DownloadsController extends GetxController {
           onNoteCompleted?.call(note.id, path);
           update();
 
-          Get.snackbar(
-            'Success',
-            'Note downloaded successfully',
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-          );
+          AppSnackbar.showSuccess('Success', 'Note downloaded successfully');
         },
         onError: (error) {
           note.isDownloading = false;
@@ -345,7 +342,10 @@ class DownloadsController extends GetxController {
           onNoteError?.call(note.id);
           update();
 
-          Get.snackbar('Error', 'Failed to download note');
+          AppSnackbar.showError(
+            'Error',
+            ApiErrorMessage.from(error, fallback: 'Failed to download note'),
+          );
         },
       );
     } catch (e) {
@@ -357,29 +357,27 @@ class DownloadsController extends GetxController {
       onNoteError?.call(note.id);
       update();
 
-      Get.snackbar('Error', 'Failed to download note');
+      AppSnackbar.showError(
+        'Error',
+        ApiErrorMessage.from(e, fallback: 'Failed to download note'),
+      );
     }
   }
 
   // Download exam (download questions)
   Future<void> downloadExam(Exam exam) async {
     if (isExamLocked(exam)) {
-      Get.snackbar(
-        'Access Denied',
-        'This exam is locked and cannot be downloaded',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showWarning('Access Denied', 'This exam is locked and cannot be downloaded');
       return;
     }
 
     if (exam.isDownloaded) {
-      Get.snackbar('Info', 'Exam is already downloaded');
+      AppSnackbar.showInfo('Info', 'Exam is already downloaded');
       return;
     }
 
     if (exam.isLoadingQuestion) {
-      Get.snackbar('Info', 'Exam is already being downloaded');
+      AppSnackbar.showInfo('Info', 'Exam is already being downloaded');
       return;
     }
 
@@ -400,12 +398,7 @@ class DownloadsController extends GetxController {
 
       await _examStorage.setQuestions(exam.id, questions);
 
-      Get.snackbar(
-        'Success',
-        'Exam downloaded successfully',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showSuccess('Success', 'Exam downloaded successfully');
 
       // Refresh exam controller if it exists
       if (Get.isRegistered<ExamController>()) {
@@ -416,14 +409,17 @@ class DownloadsController extends GetxController {
       update();
 
       logger.e(e);
-      Get.snackbar('Error', 'Failed to download exam');
+      AppSnackbar.showError(
+        'Error',
+        ApiErrorMessage.from(e, fallback: 'Failed to download exam'),
+      );
     }
   }
 
   // Play/Open video
   void playVideo(Video video) {
     if (!video.isDownloaded || video.filePath == null) {
-      Get.snackbar('Error', 'Video not downloaded');
+      AppSnackbar.showError('Error', 'Video not downloaded');
       return;
     }
 
@@ -440,7 +436,7 @@ class DownloadsController extends GetxController {
   // Open note
   void openNote(Note note) {
     if (!note.isDownloaded || note.filePath == null) {
-      Get.snackbar('Error', 'Note not downloaded');
+      AppSnackbar.showError('Error', 'Note not downloaded');
       return;
     }
 
@@ -460,7 +456,7 @@ class DownloadsController extends GetxController {
   // Start exam
   Future<void> startExam(Exam exam) async {
     if (isExamLocked(exam)) {
-      Get.snackbar(
+      AppSnackbar.showInfo(
         'Locked Exam',
         'Please unlock this exam before attempting it.',
       );
@@ -528,15 +524,13 @@ class DownloadsController extends GetxController {
                 update();
 
                 Get.back();
-                Get.snackbar(
-                  'Success',
-                  'Video deleted successfully',
-                  backgroundColor: Colors.green,
-                  colorText: Colors.white,
-                );
+                AppSnackbar.showSuccess('Success', 'Video deleted successfully');
               } catch (e) {
                 Get.back();
-                Get.snackbar('Error', 'Failed to delete video');
+                AppSnackbar.showError(
+                  'Error',
+                  ApiErrorMessage.from(e, fallback: 'Failed to delete video'),
+                );
               }
             },
             child: const Text('Delete'),
@@ -576,15 +570,13 @@ class DownloadsController extends GetxController {
                 update();
 
                 Get.back();
-                Get.snackbar(
-                  'Success',
-                  'Note deleted successfully',
-                  backgroundColor: Colors.green,
-                  colorText: Colors.white,
-                );
+                AppSnackbar.showSuccess('Success', 'Note deleted successfully');
               } catch (e) {
                 Get.back();
-                Get.snackbar('Error', 'Failed to delete note');
+                AppSnackbar.showError(
+                  'Error',
+                  ApiErrorMessage.from(e, fallback: 'Failed to delete note'),
+                );
               }
             },
             child: const Text('Delete'),
@@ -628,15 +620,13 @@ class DownloadsController extends GetxController {
                 update();
 
                 Get.back();
-                Get.snackbar(
-                  'Success',
-                  'Exam deleted successfully',
-                  backgroundColor: Colors.green,
-                  colorText: Colors.white,
-                );
+                AppSnackbar.showSuccess('Success', 'Exam deleted successfully');
               } catch (e) {
                 Get.back();
-                Get.snackbar('Error', 'Failed to delete exam');
+                AppSnackbar.showError(
+                  'Error',
+                  ApiErrorMessage.from(e, fallback: 'Failed to delete exam'),
+                );
               }
             },
             child: const Text('Delete'),
@@ -719,16 +709,17 @@ class DownloadsController extends GetxController {
                 update();
 
                 Get.back();
-                Get.snackbar(
+                AppSnackbar.showSuccess(
                   'Success',
                   'All downloads and progress cleared successfully',
-                  backgroundColor: Colors.green,
-                  colorText: Colors.white,
                 );
               } catch (e) {
                 Get.back();
                 logger.e('Error clearing all downloads: $e');
-                Get.snackbar('Error', 'Failed to clear downloads');
+                AppSnackbar.showError(
+                  'Error',
+                  ApiErrorMessage.from(e, fallback: 'Failed to clear downloads'),
+                );
               }
             },
             child: const Text('Clear All'),
@@ -769,15 +760,13 @@ class DownloadsController extends GetxController {
                 update();
 
                 Get.back();
-                Get.snackbar(
-                  'Success',
-                  'All videos cleared successfully',
-                  backgroundColor: Colors.green,
-                  colorText: Colors.white,
-                );
+                AppSnackbar.showSuccess('Success', 'All videos cleared successfully');
               } catch (e) {
                 Get.back();
-                Get.snackbar('Error', 'Failed to clear videos');
+                AppSnackbar.showError(
+                  'Error',
+                  ApiErrorMessage.from(e, fallback: 'Failed to clear videos'),
+                );
               }
             },
             child: const Text('Clear Videos'),
@@ -832,16 +821,17 @@ class DownloadsController extends GetxController {
                 update();
 
                 Get.back();
-                Get.snackbar(
+                AppSnackbar.showSuccess(
                   'Success',
                   'All exams and progress cleared successfully',
-                  backgroundColor: Colors.green,
-                  colorText: Colors.white,
                 );
               } catch (e) {
                 Get.back();
                 logger.e('Error clearing exams: $e');
-                Get.snackbar('Error', 'Failed to clear exams and progress');
+                AppSnackbar.showError(
+                  'Error',
+                  ApiErrorMessage.from(e, fallback: 'Failed to clear exams and progress'),
+                );
               }
             },
             child: const Text('Clear Exams'),
@@ -882,15 +872,13 @@ class DownloadsController extends GetxController {
                 update();
 
                 Get.back();
-                Get.snackbar(
-                  'Success',
-                  'All notes cleared successfully',
-                  backgroundColor: Colors.green,
-                  colorText: Colors.white,
-                );
+                AppSnackbar.showSuccess('Success', 'All notes cleared successfully');
               } catch (e) {
                 Get.back();
-                Get.snackbar('Error', 'Failed to clear notes');
+                AppSnackbar.showError(
+                  'Error',
+                  ApiErrorMessage.from(e, fallback: 'Failed to clear notes'),
+                );
               }
             },
             child: const Text('Clear Notes'),

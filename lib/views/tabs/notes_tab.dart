@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/controllers/subject/chapter_detail_controller.dart';
 import 'package:vector_academy/models/models.dart';
+import 'package:vector_academy/utils/utils.dart';
 
 class NotesTab extends StatelessWidget {
   const NotesTab({super.key});
@@ -460,7 +461,7 @@ class NotesTab extends StatelessWidget {
       controller.openPDF(note.id);
     } else {
       // For other types, show a message or implement other viewers
-      Get.snackbar('Info', 'Opening ${type.toUpperCase()} viewer');
+      AppSnackbar.showInfo('Info', 'Opening ${type.toUpperCase()} viewer');
     }
   }
 

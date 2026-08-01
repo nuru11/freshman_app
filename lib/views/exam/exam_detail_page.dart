@@ -315,7 +315,7 @@ class _ExamDetailPageState extends State<ExamDetailPage> {
     return correct;
   }
 
-  Future<void> _shareExam(BuildContext context) async {
+  Future<void> _shareExam() async {
     try {
       final shareLink = ShareUtils.generateExamLink(_exam.id);
       final shareText = '${_exam.name}\n\n$shareLink';
@@ -323,14 +323,11 @@ class _ExamDetailPageState extends State<ExamDetailPage> {
       await Share.share(shareText, subject: _exam.name);
     } catch (e) {
       logger.e('Error sharing exam: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to share exam'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
+      AppSnackbar.showError(
+        'Error',
+        'Failed to share exam',
+        duration: const Duration(seconds: 2),
+      );
     }
   }
 
@@ -344,7 +341,7 @@ class _ExamDetailPageState extends State<ExamDetailPage> {
         actions: [
           IconButton(
             icon: Icon(Icons.share),
-            onPressed: () => _shareExam(context),
+            onPressed: _shareExam,
             tooltip: 'Share exam',
           ),
         ],

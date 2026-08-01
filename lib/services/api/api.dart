@@ -1,8 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:get/get.dart' hide Response, FormData, MultipartFile;
 import "package:vector_academy/utils/utils.dart";
-import 'package:flutter/material.dart';
 
 class BaseApiClient {
   final String baseUrl = defaultApiURL;
@@ -41,14 +39,7 @@ class BaseApiClient {
           // Handle 401 errors and attempt token refresh
           if (error.response?.statusCode == 401 && refreshToken.isNotEmpty) {
             try {
-              Get.snackbar(
-                'Error',
-
-                'Unauthorized',
-                snackPosition: SnackPosition.TOP,
-                backgroundColor: Colors.red,
-                colorText: Colors.white,
-              );
+              AppSnackbar.showError('Error', 'Unauthorized');
 
               // Get.offAllNamed(VIEWS.login.path);
               final newToken = await _refreshToken();

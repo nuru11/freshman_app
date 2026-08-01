@@ -6,6 +6,7 @@ import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/components/components.dart';
 import 'package:vector_academy/controllers/exam/question_page_controller.dart';
 import 'package:vector_academy/utils/navigation_utils.dart';
+import 'package:vector_academy/utils/utils.dart';
 
 class QuestionPage extends StatelessWidget {
   final String title;
@@ -1082,14 +1083,9 @@ class QuestionPage extends StatelessWidget {
                         onPressed: () {
                           // You can add contact support logic here
                           // For now, just show a snackbar
-                          Get.snackbar(
+                          AppSnackbar.showInfo(
                             'Contact Support',
                             'Please contact our support team for assistance.',
-                            backgroundColor: theme.colorScheme.primaryContainer,
-                            colorText: theme.colorScheme.onPrimaryContainer,
-                            snackPosition: SnackPosition.BOTTOM,
-                            margin: EdgeInsets.all(16),
-                            borderRadius: 12,
                           );
                         },
                         icon: Icon(Icons.support_agent),

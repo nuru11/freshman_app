@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:vector_academy/components/components.dart';
 import 'package:vector_academy/controllers/controllers.dart';
 import 'package:vector_academy/views/views.dart';
+import 'package:vector_academy/utils/utils.dart';
 
 class AgentStatusPage extends StatelessWidget {
   const AgentStatusPage({super.key});
@@ -320,7 +321,6 @@ class AgentStatusPage extends StatelessWidget {
                       'Referral Code',
                       agent.referralCode!,
                       Icons.local_offer,
-                      context,
                     ),
                     const Divider(),
                   ],
@@ -481,27 +481,15 @@ class AgentStatusPage extends StatelessWidget {
     String label,
     String value,
     IconData icon,
-    BuildContext context,
   ) {
     return InkWell(
       onTap: () async {
         await Clipboard.setData(ClipboardData(text: value));
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text('$label copied to clipboard'),
-                ],
-              ),
-              backgroundColor: Colors.green[600],
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+        AppSnackbar.showSuccess(
+          'Success',
+          '$label copied to clipboard',
+          duration: const Duration(seconds: 2),
+        );
       },
       borderRadius: BorderRadius.circular(8),
       child: Padding(

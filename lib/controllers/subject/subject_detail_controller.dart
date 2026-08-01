@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:vector_academy/views/views.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/utils/utils.dart';
+import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'dart:async';
 import 'package:vector_academy/utils/storages/storages.dart';
@@ -59,7 +60,10 @@ class SubjectDetailController extends GetxController {
       _freePreviewChapterId = _chapters.isNotEmpty ? _chapters.first.id : null;
     } catch (e) {
       logger.e(e);
-      Get.snackbar('Error', 'Failed to load subject details');
+      AppSnackbar.showError(
+        'Error',
+        ApiErrorMessage.from(e, fallback: 'Failed to load subject details'),
+      );
       rethrow;
     } finally {
       _isLoading = false;
@@ -77,10 +81,9 @@ class SubjectDetailController extends GetxController {
         VIEWS.payments.path,
         arguments: {'subjectId': subjectId, 'subjectName': _subjectName},
       );
-      Get.snackbar(
+      AppSnackbar.showInfo(
         'Subscription Required',
         'Pay once to unlock all chapters in $_subjectName.',
-        snackPosition: SnackPosition.BOTTOM,
       );
       return;
     }

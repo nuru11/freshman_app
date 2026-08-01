@@ -166,7 +166,7 @@ class _SuccessStoryDetailPageState extends State<SuccessStoryDetailPage> {
           ),
           child: IconButton(
             icon: const Icon(Icons.share, color: Color(0xFF2D3748)),
-            onPressed: () => _shareStory(context),
+            onPressed: _shareStory,
           ),
         ),
       ],
@@ -468,7 +468,7 @@ class _SuccessStoryDetailPageState extends State<SuccessStoryDetailPage> {
     return (wordCount / 200).ceil().clamp(1, 60);
   }
 
-  Future<void> _shareStory(BuildContext context) async {
+  Future<void> _shareStory() async {
     if (_story == null) return;
 
     try {
@@ -478,14 +478,11 @@ class _SuccessStoryDetailPageState extends State<SuccessStoryDetailPage> {
       await Share.share(shareText, subject: _story!.title);
     } catch (e) {
       logger.e('Error sharing story: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to share story'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
+      AppSnackbar.showError(
+        'Error',
+        'Failed to share story',
+        duration: const Duration(seconds: 2),
+      );
     }
   }
 }

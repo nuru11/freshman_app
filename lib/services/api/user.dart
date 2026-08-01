@@ -42,6 +42,7 @@ class UserService extends GetxController {
       'phone_number': phone,
       'password': password,
       'gradeId': grade,
+      'app_package': backendAppPackage,
     };
     
     final response = await apiClient.post(
@@ -56,6 +57,9 @@ class UserService extends GetxController {
     String? error;
     if (response.data['phone_number'] != null) {
       error = "Phone Number: ${response.data['phone_number'][0]}";
+    }
+    if (response.data['gradeId'] != null) {
+      error = "Grade: ${response.data['gradeId'][0]}";
     }
     if (response.data['grade'] != null) {
       error = "Grade: ${response.data['grade'][0]}";
@@ -76,7 +80,11 @@ class UserService extends GetxController {
   Future<AuthResponse> loginUser(String phone, String password) async {
     final response = await apiClient.post(
       '/auth/login/',
-      data: {'phone_number': phone, 'password': password},
+      data: {
+        'phone_number': phone,
+        'password': password,
+        'app_package': backendAppPackage,
+      },
     );
     if (response.statusCode == 200) {
       logger.i(response.data);
@@ -86,7 +94,9 @@ class UserService extends GetxController {
 
     logger.e(response.data);
 
-    throw ApiException(response.data['detail'] ?? "Failed to login user");
+    throw ApiException(
+      ApiErrorMessage.fromData(response.data) ?? 'Failed to login user',
+    );
   }
 
   Future<User> updateUser({

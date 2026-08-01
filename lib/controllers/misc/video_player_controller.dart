@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'dart:io'; // Added for File
 import 'package:vector_academy/utils/utils.dart';
+import 'package:vector_academy/services/api/exceptions.dart';
 
 class CustomVideoPlayerController extends GetxController {
   late VideoPlayerController _controller;
@@ -77,7 +78,10 @@ class CustomVideoPlayerController extends GetxController {
       isLoading.value = false;
     } catch (e) {
       isLoading.value = false;
-      Get.snackbar('Error', 'Failed to load video: $e');
+      AppSnackbar.showError(
+        'Error',
+        ApiErrorMessage.from(e, fallback: 'Failed to load video'),
+      );
     }
   }
 

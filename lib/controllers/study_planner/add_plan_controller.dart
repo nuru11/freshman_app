@@ -257,7 +257,7 @@ class AddPlanController extends GetxController {
       logger.d('navigate back to study planner page');
 
       // Show success message after navigation
-      AppSnackbar.showSuccess(
+      AppSnackbar.showSuccessAfterNav(
         'Success',
         plan != null ? 'Study plan updated' : 'Study plan created',
       );

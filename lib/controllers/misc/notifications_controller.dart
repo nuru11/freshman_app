@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/utils/storages/notification.dart';
 import 'package:vector_academy/services/services.dart';
+import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/utils/utils.dart';
 
 class NotificationsController extends GetxController {
@@ -34,7 +35,10 @@ class NotificationsController extends GetxController {
       await _notificationStorage.setNotifications(_notifications);
     } catch (e) {
       logger.e(e);
-      Get.snackbar('Error', 'Failed to load notifications');
+      AppSnackbar.showError(
+        'Error',
+        ApiErrorMessage.from(e, fallback: 'Failed to load notifications'),
+      );
     } finally {
       _isLoading = false;
       update();

@@ -52,6 +52,12 @@ class SubjectController extends GetxController {
       await HiveSubjectsStorage().write('subjects', _subjects);
     } catch (e) {
       _subjects = await HiveSubjectsStorage().read('subjects');
+      if (_subjects.isEmpty) {
+        AppSnackbar.showError(
+          'Error',
+          'Failed to load subjects. Please try again.',
+        );
+      }
     } finally {
       _isLoading = false;
       update();

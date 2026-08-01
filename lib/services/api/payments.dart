@@ -25,10 +25,16 @@ class PaymentService extends GetxController {
         return paymentMethods;
       }
 
-      throw ApiException('Failed to load payment methods');
+      throw ApiException(
+        ApiErrorMessage.fromData(response.data) ??
+            'Failed to load payment methods',
+      );
     } catch (e) {
       logger.e('Error getting payment methods: $e');
-      throw ApiException('Failed to load payment methods');
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        ApiErrorMessage.from(e, fallback: 'Failed to load payment methods'),
+      );
     }
   }
 
@@ -46,12 +52,14 @@ class PaymentService extends GetxController {
       }
 
       throw ApiException(
-        response.data['error']?['message'] ?? 'Failed to create payment',
+        ApiErrorMessage.fromData(response.data) ?? 'Failed to create payment',
       );
     } catch (e) {
       logger.e('Error creating payment: $e');
       if (e is ApiException) rethrow;
-      throw ApiException('Failed to create payment');
+      throw ApiException(
+        ApiErrorMessage.from(e, fallback: 'Failed to create payment'),
+      );
     }
   }
 
@@ -72,10 +80,15 @@ class PaymentService extends GetxController {
 
       logger.e(response.data);
 
-      throw ApiException('Failed to load payments');
+      throw ApiException(
+        ApiErrorMessage.fromData(response.data) ?? 'Failed to load payments',
+      );
     } catch (e) {
       logger.e('Error getting user payments: $e');
-      throw ApiException('Failed to load payments');
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        ApiErrorMessage.from(e, fallback: 'Failed to load payments'),
+      );
     }
   }
 
@@ -99,11 +112,16 @@ class PaymentService extends GetxController {
         );
       }
 
-      throw ApiException('Failed to validate referral code');
+      throw ApiException(
+        ApiErrorMessage.fromData(response.data) ??
+            'Failed to validate referral code',
+      );
     } catch (e) {
       logger.e('Error validating referral code: $e');
       if (e is ApiException) rethrow;
-      throw ApiException('Failed to validate referral code');
+      throw ApiException(
+        ApiErrorMessage.from(e, fallback: 'Failed to validate referral code'),
+      );
     }
   }
 
@@ -115,10 +133,15 @@ class PaymentService extends GetxController {
     required double amount,
     String? referralCode,
   }) async {
+    final deviceId = device.trim();
+    if (deviceId.isEmpty) {
+      throw ApiException('Device ID is missing. Please restart the app and try again.');
+    }
+
     final additionalData = <String, dynamic>{
       'package': package,
       'method': paymentMethod,
-      'device': device,
+      'device': deviceId,
       'amount': amount,
     };
     
@@ -140,7 +163,9 @@ class PaymentService extends GetxController {
     }
     logger.e(response.data);
 
-    throw ApiException('Failed to upload receipt');
+    throw ApiException(
+      ApiErrorMessage.fromData(response.data) ?? 'Failed to upload receipt',
+    );
   }
 
   // Get all available packages
@@ -164,10 +189,15 @@ class PaymentService extends GetxController {
 
       logger.e(response.data);
 
-      throw ApiException('Failed to load packages');
+      throw ApiException(
+        ApiErrorMessage.fromData(response.data) ?? 'Failed to load packages',
+      );
     } catch (e) {
       logger.e('Error getting packages: $e');
-      throw ApiException('Failed to load packages');
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        ApiErrorMessage.from(e, fallback: 'Failed to load packages'),
+      );
     }
   }
 }

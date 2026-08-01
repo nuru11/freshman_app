@@ -2,6 +2,7 @@ import 'package:vector_academy/utils/storages/storages.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/views/views.dart';
 import 'package:vector_academy/services/services.dart';
+import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'dart:async';
@@ -156,17 +157,24 @@ class ProfileController extends GetxController {
       await AuthService().saveUser(user_);
       hasChangeOnEditProfile = false;
       _selectedProfileImage = null;
-    } catch (e) {
-      logger.e(e);
-      AppSnackbar.showError('Error', 'Failed to update user');
-    } finally {
       _selectedGrade = user?.grade;
-      _isLoading = false;
-      isUpdating = false;
       phoneEditController.text = user?.phoneNumber ?? '';
       nameEditController.text = fullName;
-      update();
       Get.back();
+      AppSnackbar.showSuccessAfterNav('Success', 'Profile updated successfully');
+    } catch (e) {
+      logger.e(e);
+      AppSnackbar.showError(
+        'Error',
+        ApiErrorMessage.from(e, fallback: 'Failed to update user'),
+      );
+      _selectedGrade = user?.grade;
+      phoneEditController.text = user?.phoneNumber ?? '';
+      nameEditController.text = fullName;
+    } finally {
+      _isLoading = false;
+      isUpdating = false;
+      update();
     }
   }
 

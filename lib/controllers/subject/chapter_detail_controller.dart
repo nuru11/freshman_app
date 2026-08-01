@@ -1,11 +1,11 @@
 import 'package:get/get.dart';
-import 'package:flutter/material.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/utils/storages/storages.dart';
 import 'package:vector_academy/utils/utils.dart';
 import 'package:vector_academy/views/views.dart';
 import 'package:vector_academy/controllers/subject/subject_detail_controller.dart';
 import 'package:vector_academy/services/services.dart';
+import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/utils/device/device.dart';
 import 'package:vector_academy/controllers/misc/downloads_controller.dart';
 import 'dart:io';
@@ -91,11 +91,9 @@ class ChapterDetailController extends GetxController {
   }
 
   void _showLockedContentMessage() {
-    Get.snackbar(
+    AppSnackbar.showWarning(
       'Locked Content',
       'Subscribe to this subject to access all chapters.',
-      backgroundColor: Colors.orange,
-      colorText: Colors.white,
     );
   }
 
@@ -111,10 +109,9 @@ class ChapterDetailController extends GetxController {
         VIEWS.payments.path,
         arguments: {'subjectId': subjectId},
       );
-      Get.snackbar(
+      AppSnackbar.showInfo(
         'Subscription Required',
         'Subscribe to unlock all chapters for this subject.',
-        snackPosition: SnackPosition.BOTTOM,
       );
       super.onInit();
       return;
@@ -289,6 +286,12 @@ class ChapterDetailController extends GetxController {
     } catch (e) {
       logger.e('Error loading videos: $e');
       _videos = await _hiveVideoStorage.getVideos(chapterId);
+      if (_videos.isEmpty) {
+        AppSnackbar.showError(
+          'Error',
+          ApiErrorMessage.from(e, fallback: 'Failed to load videos'),
+        );
+      }
     }
     _syncActiveDownloads();
     _isVideosLoading = false;
@@ -314,6 +317,12 @@ class ChapterDetailController extends GetxController {
     } catch (e) {
       logger.e('Error loading notes: $e');
       _notes = await _hiveNoteStorage.getNotes(chapterId);
+      if (_notes.isEmpty) {
+        AppSnackbar.showError(
+          'Error',
+          ApiErrorMessage.from(e, fallback: 'Failed to load notes'),
+        );
+      }
     }
     _syncActiveDownloads();
     _isNotesLoading = false;
@@ -340,7 +349,14 @@ class ChapterDetailController extends GetxController {
         );
       }
     } catch (e) {
+      logger.e('Error loading quizzes: $e');
       _quizzes = await _examStorage.getQuizzes(chapterId);
+      if (_quizzes.isEmpty) {
+        AppSnackbar.showError(
+          'Error',
+          ApiErrorMessage.from(e, fallback: 'Failed to load quizzes'),
+        );
+      }
     }
     _isQuizzesLoading = false;
     update();
@@ -402,11 +418,9 @@ class ChapterDetailController extends GetxController {
         if (!video.isDownloaded ||
             video.filePath == null ||
             video.filePath!.isEmpty) {
-          Get.snackbar(
+          AppSnackbar.showWarning(
             'Video Not Available',
             'This video needs to be downloaded first to watch offline',
-            backgroundColor: Colors.orange,
-            colorText: Colors.white,
             duration: const Duration(seconds: 3),
           );
           return;
@@ -415,11 +429,9 @@ class ChapterDetailController extends GetxController {
         // Check if the file actually exists
         final file = File(video.filePath!);
         if (!await file.exists()) {
-          Get.snackbar(
+          AppSnackbar.showError(
             'File Not Found',
             'The downloaded video file could not be found. Please download again.',
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
             duration: const Duration(seconds: 3),
           );
 
@@ -444,11 +456,14 @@ class ChapterDetailController extends GetxController {
           );
         }
       } else {
-        Get.snackbar('Error', 'Video not found');
+        AppSnackbar.showError('Error', 'Video not found');
       }
     } catch (e) {
       logger.e('Error playing video: $e');
-      Get.snackbar('Error', 'Failed to play video: $e');
+      AppSnackbar.showError(
+        'Error',
+        ApiErrorMessage.from(e, fallback: 'Failed to play video'),
+      );
     }
   }
 
@@ -475,11 +490,9 @@ class ChapterDetailController extends GetxController {
             note.isDownloaded = false;
             note.filePath = null;
             update();
-            Get.snackbar(
+            AppSnackbar.showWarning(
               'File Not Found',
               'The downloaded file could not be found. Please download again.',
-              backgroundColor: Colors.orange,
-              colorText: Colors.white,
             );
             return;
           }
@@ -489,11 +502,9 @@ class ChapterDetailController extends GetxController {
           logger.e(
             'Remote PDF access not properly implemented. Note content: ${note.content}',
           );
-          Get.snackbar(
+          AppSnackbar.showWarning(
             'Error',
             'Remote PDF viewing is not implemented. Please download the PDF first.',
-            backgroundColor: Colors.orange,
-            colorText: Colors.white,
           );
           return;
         }
@@ -505,18 +516,21 @@ class ChapterDetailController extends GetxController {
           PDFReaderScreen(pdfUrl: pdfUrl, pdfTitle: note.title, pdfId: noteId),
         );
       } else {
-        Get.snackbar('Error', 'PDF not found');
+        AppSnackbar.showError('Error', 'PDF not found');
       }
     } catch (e) {
       logger.e('Error opening PDF: $e');
-      Get.snackbar('Error', 'Failed to open PDF');
+      AppSnackbar.showError(
+        'Error',
+        ApiErrorMessage.from(e, fallback: 'Failed to open PDF'),
+      );
     }
   }
 
   void downloadNote(int noteId) async {
     final note = _notes.firstWhereOrNull((n) => n.id == noteId);
     if (note == null) {
-      Get.snackbar('Error', 'Note not found');
+      AppSnackbar.showError('Error', 'Note not found');
       return;
     }
     if (isNoteLocked(note)) {
@@ -531,7 +545,7 @@ class ChapterDetailController extends GetxController {
       if (note.content.toLowerCase() == 'pdf') {
         openPDF(noteId);
       } else {
-        Get.snackbar('Info', 'Note is already downloaded and available offline');
+        AppSnackbar.showInfo('Info', 'Note is already downloaded and available offline');
       }
       return;
     }
@@ -561,22 +575,15 @@ class ChapterDetailController extends GetxController {
 
         // Check if already downloaded
         if (quiz.isDownloaded && quiz.questions.isNotEmpty) {
-          Get.snackbar(
-            'Info',
-            'Quiz is already downloaded',
-            backgroundColor: Colors.blue,
-            colorText: Colors.white,
-          );
+          AppSnackbar.showInfo('Info', 'Quiz is already downloaded');
           return;
         }
 
         // Check if already downloading
         if (quiz.isLoadingQuestion) {
-          Get.snackbar(
+          AppSnackbar.showWarning(
             'Already Downloading',
             'This quiz is already being downloaded',
-            backgroundColor: Colors.orange,
-            colorText: Colors.white,
           );
           return;
         }
@@ -586,11 +593,9 @@ class ChapterDetailController extends GetxController {
         quizDownloadProgress[quizId] = {'progress': 0.0, 'isDownloading': true};
         update();
 
-        Get.snackbar(
+        AppSnackbar.showInfo(
           'Downloading',
           'Starting download of ${quiz.name}...',
-          backgroundColor: Colors.blue,
-          colorText: Colors.white,
           duration: const Duration(seconds: 2),
         );
 
@@ -611,15 +616,13 @@ class ChapterDetailController extends GetxController {
 
         await _examStorage.setQuestions(quiz.id, questions);
 
-        Get.snackbar(
+        AppSnackbar.showSuccess(
           'Download Complete',
           'Quiz downloaded successfully',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
           duration: const Duration(seconds: 3),
         );
       } else {
-        Get.snackbar('Error', 'Quiz not found');
+        AppSnackbar.showError('Error', 'Quiz not found');
       }
     } catch (e) {
       final quiz = _quizzes.firstWhereOrNull((q) => q.id == quizId);
@@ -630,11 +633,9 @@ class ChapterDetailController extends GetxController {
       }
 
       logger.e('Error downloading quiz: $e');
-      Get.snackbar(
+      AppSnackbar.showError(
         'Download Failed',
-        'Failed to download quiz: $e',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+        ApiErrorMessage.from(e, fallback: 'Failed to download quiz'),
         duration: const Duration(seconds: 4),
       );
     }
@@ -643,7 +644,7 @@ class ChapterDetailController extends GetxController {
   void downloadVideo(int videoId) async {
     final video = _videos.firstWhereOrNull((v) => v.id == videoId);
     if (video == null) {
-      Get.snackbar('Error', 'Video not found');
+      AppSnackbar.showError('Error', 'Video not found');
       return;
     }
     if (isVideoLocked(video)) {

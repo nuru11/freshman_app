@@ -1,10 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vector_academy/components/components.dart';
-import 'package:vector_academy/config/support_config.dart';
+import 'package:vector_academy/utils/utils.dart';
 
 class SupportPage extends StatelessWidget {
   const SupportPage({super.key});
+
+  Future<void> _openSupportLink(String url, String label) async {
+    final uri = Uri.parse(url);
+    try {
+      final canLaunch = await canLaunchUrl(uri);
+      if (!canLaunch) {
+        AppSnackbar.showError('Error', 'Unable to open $label');
+        return;
+      }
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        AppSnackbar.showError('Error', 'Unable to open $label');
+      }
+    } catch (e) {
+      AppSnackbar.showError('Error', 'Unable to open $label');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,21 +42,21 @@ class SupportPage extends StatelessWidget {
             icon: Icons.telegram,
             title: 'Telegram',
             subtitle: supportTelegramHandle,
-            onTap: () => launchUrl(Uri.parse(supportTelegramUrl)),
+            onTap: () => _openSupportLink(supportTelegramUrl, 'Telegram'),
           ),
           const SizedBox(height: 8),
           _SupportTile(
             icon: Icons.email_outlined,
             title: 'Email',
             subtitle: supportEmail,
-            onTap: () => launchUrl(Uri.parse(supportEmailUrl)),
+            onTap: () => _openSupportLink(supportEmailUrl, 'Email'),
           ),
           const SizedBox(height: 8),
           _SupportTile(
             icon: Icons.phone_outlined,
             title: 'Phone',
             subtitle: supportPhoneNumber,
-            onTap: () => launchUrl(Uri.parse(supportPhoneUrl)),
+            onTap: () => _openSupportLink(supportPhoneUrl, 'Phone'),
           ),
         ],
       ),

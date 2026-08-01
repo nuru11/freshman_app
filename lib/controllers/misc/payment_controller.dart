@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/services/services.dart';
+import 'package:vector_academy/services/api/device.dart';
 import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/utils/utils.dart';
 import 'package:vector_academy/utils/storages/storages.dart';
@@ -115,11 +116,9 @@ class PaymentController extends GetxController {
       paymentMethods = paymentMethods_;
     } catch (e) {
       logger.e(e);
-      Get.snackbar(
+      AppSnackbar.showError(
         'Error',
-        e is ApiException ? e.message : 'Failed to load payment methods',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+        ApiErrorMessage.from(e, fallback: 'Failed to load payment methods'),
       );
     } finally {
       isLoading = false;
@@ -127,19 +126,27 @@ class PaymentController extends GetxController {
     }
   }
 
+  Future<DeviceInfo> _ensureDeviceRegistered() async {
+    final phone = _user?.phoneNumber ?? '';
+    try {
+      await DeviceService().registerDevice(phone);
+    } catch (e) {
+      logger.w('Device re-registration before payment failed: $e');
+    }
+    return UserDevice.getDeviceInfo(phone);
+  }
+
   Future<void> loadUserPayments() async {
     try {
       isLoadingPayments = true;
       update();
-      final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
+      final device = await _ensureDeviceRegistered();
       final userPayments_ = await _paymentService.getUserPayments(device.id);
       userPayments = userPayments_;
     } catch (e) {
-      Get.snackbar(
+      AppSnackbar.showError(
         'Error',
-        e is ApiException ? e.message : 'Failed to load payment history',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+        ApiErrorMessage.from(e, fallback: 'Failed to load payment history'),
       );
     } finally {
       isLoadingPayments = false;
@@ -188,7 +195,7 @@ class PaymentController extends GetxController {
     try {
       isLoading = true;
       update();
-      final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
+      final device = await _ensureDeviceRegistered();
       final grade = _user?.grade;
       final packages_ = await _paymentService.getPackages(
         device.id,
@@ -204,11 +211,9 @@ class PaymentController extends GetxController {
         await _validateReferralForAllPackages();
       }
     } catch (e) {
-      Get.snackbar(
+      AppSnackbar.showError(
         'Error',
-        e is ApiException ? e.message : 'Failed to load packages',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+        ApiErrorMessage.from(e, fallback: 'Failed to load packages'),
       );
     } finally {
       isLoading = false;
@@ -221,24 +226,14 @@ class PaymentController extends GetxController {
     update();
 
     if (selectedPaymentMethod == null) {
-      Get.snackbar(
-        'Error',
-        'Please select a payment method',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Error', 'Please select a payment method');
       isCreatingPayment = false;
       update();
       return false;
     }
 
     if (selectedReceiptImage == null) {
-      Get.snackbar(
-        'Error',
-        'Please upload a receipt image',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Error', 'Please upload a receipt image');
       isCreatingPayment = false;
       update();
       return false;
@@ -246,12 +241,7 @@ class PaymentController extends GetxController {
 
     final package = _packageById(packageId);
     if (package == null) {
-      Get.snackbar(
-        'Error',
-        'Package not found',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Error', 'Package not found');
       isCreatingPayment = false;
       update();
       return false;
@@ -264,7 +254,14 @@ class PaymentController extends GetxController {
     try {
       isCreatingPayment = true;
       update();
-      final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
+      final device = await _ensureDeviceRegistered();
+      if (device.id.trim().isEmpty) {
+        AppSnackbar.showError(
+          'Error',
+          'Could not identify this device. Please restart the app and try again.',
+        );
+        return false;
+      }
       final receiptFile = selectedReceiptImage!;
       await _paymentService.uploadReceipt(
         file: receiptFile,
@@ -273,14 +270,6 @@ class PaymentController extends GetxController {
         amount: paymentAmount,
         device: device.id,
         referralCode: referralCode,
-      );
-
-      Get.snackbar(
-        'Success',
-        'Payment submitted successfully! It will be reviewed by admin!',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
       );
 
       selectedPaymentMethod = null;
@@ -294,14 +283,17 @@ class PaymentController extends GetxController {
       loadUserPayments();
 
       Get.offAllNamed(VIEWS.home.path);
+      AppSnackbar.showSuccessAfterNav(
+        'Success',
+        'Payment submitted successfully! It will be reviewed by admin!',
+        duration: const Duration(seconds: 4),
+      );
       return true;
     } catch (e) {
       logger.e(e);
-      Get.snackbar(
+      AppSnackbar.showError(
         'Error',
-        e is ApiException ? e.message : 'Failed to create payment',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+        ApiErrorMessage.from(e, fallback: 'Failed to create payment'),
       );
       return false;
     } finally {
@@ -392,11 +384,9 @@ class PaymentController extends GetxController {
       logger.e(e);
       referralValidationStatus = ReferralValidationStatus.invalid;
       referralAmountByPackageId.clear();
-      Get.snackbar(
+      AppSnackbar.showWarning(
         'Referral code',
-        e is ApiException ? e.message : 'Could not validate referral code',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+        ApiErrorMessage.from(e, fallback: 'Could not validate referral code'),
       );
     } finally {
       update();
@@ -428,11 +418,9 @@ class PaymentController extends GetxController {
       referralValidationStatus = ReferralValidationStatus.invalid;
       amountToPay = package.price;
       referralAmountByPackageId.remove(package.id);
-      Get.snackbar(
+      AppSnackbar.showWarning(
         'Referral code',
-        e is ApiException ? e.message : 'Could not validate referral code',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+        ApiErrorMessage.from(e, fallback: 'Could not validate referral code'),
       );
     } finally {
       update();

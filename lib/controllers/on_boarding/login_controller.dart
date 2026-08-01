@@ -36,16 +36,26 @@ class LoginController extends GetxController {
         await authService.saveAuthToken(response.tokens);
         await authService.saveUser(user);
 
-        await DeviceService().registerDevice(user.phoneNumber);
+        try {
+          await DeviceService().registerDevice(user.phoneNumber);
+        } catch (e) {
+          logger.w('Device registration failed after login: $e');
+        }
 
-        AppSnackbar.showSuccess('Success', 'Login successful!');
         Get.offAllNamed(VIEWS.home.path);
-      } on DioException catch (e) {
-        AppSnackbar.showError('Login Failed', e.message ?? 'Failed to login');
+        AppSnackbar.showSuccessAfterNav('Success', 'Login successful!');
       } on ApiException catch (e) {
         AppSnackbar.showError('Login Failed', e.message);
+      } on DioException catch (e) {
+        AppSnackbar.showError(
+          'Login Failed',
+          ApiErrorMessage.from(e, fallback: 'Failed to login'),
+        );
       } catch (e) {
-        AppSnackbar.showError('Login Failed', e.toString());
+        AppSnackbar.showError(
+          'Login Failed',
+          ApiErrorMessage.from(e, fallback: 'Failed to login'),
+        );
       } finally {
         _setLoading(false);
       }

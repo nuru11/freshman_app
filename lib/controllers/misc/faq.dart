@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:vector_academy/services/services.dart';
+import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/utils/utils.dart';
 
@@ -18,7 +19,10 @@ class FAQController extends GetxController {
       faqs = faqs;
     } catch (e) {
       logger.e(e);
-      Get.snackbar('Error', 'Failed to load FAQs');
+      AppSnackbar.showError(
+        'Error',
+        ApiErrorMessage.from(e, fallback: 'Failed to load FAQs'),
+      );
     } finally {
       isLoading = false;
       update();

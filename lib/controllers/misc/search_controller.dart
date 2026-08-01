@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:vector_academy/utils/utils.dart';
 
 class SearchPageController extends GetxController {
   final searchController = TextEditingController();
@@ -118,7 +119,7 @@ class SearchPageController extends GetxController {
       });
 
     } catch (e) {
-      Get.snackbar('Error', 'Failed to search');
+      AppSnackbar.showError('Error', 'Failed to search');
     } finally {
       _isLoading = false;
       update();
@@ -128,16 +129,16 @@ class SearchPageController extends GetxController {
   void openResult(Map<String, dynamic> result) {
     switch (result['type']) {
       case 'subject':
-        Get.snackbar('Info', 'Opening subject: ${result['title']}');
+        AppSnackbar.showInfo('Info', 'Opening subject: ${result['title']}');
         break;
       case 'exam':
-        Get.snackbar('Info', 'Opening exam: ${result['title']}');
+        AppSnackbar.showInfo('Info', 'Opening exam: ${result['title']}');
         break;
       case 'note':
-        Get.snackbar('Info', 'Opening note: ${result['title']}');
+        AppSnackbar.showInfo('Info', 'Opening note: ${result['title']}');
         break;
       case 'video':
-        Get.snackbar('Info', 'Opening video: ${result['title']}');
+        AppSnackbar.showInfo('Info', 'Opening video: ${result['title']}');
         break;
     }
   }

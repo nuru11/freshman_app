@@ -93,7 +93,13 @@ class ExamController extends GetxController {
           .where((e) => e.examType != 'quiz')
           .toList();
     } catch (e) {
-      _exams = await _hiveExamStorage.getExams();
+      _exams = (await _hiveExamStorage.getExams())
+          .where((e) => e.examType != 'quiz')
+          .toList();
+      if (_exams.isEmpty) {
+        _error = 'Failed to load exams. Please try again.';
+        AppSnackbar.showError('Error', _error!);
+      }
     } finally {
       _isLoading = false;
       await _refreshCompletionBadges();

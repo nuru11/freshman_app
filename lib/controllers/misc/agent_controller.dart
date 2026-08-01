@@ -192,13 +192,12 @@ class AgentController extends GetxController {
       bankAccountController.clear();
       accountNameController.clear();
 
-      AppSnackbar.showSuccess(
+      // Navigate back or to status page
+      Get.back();
+      AppSnackbar.showSuccessAfterNav(
         'Success',
         'Your application has been submitted successfully!',
       );
-
-      // Navigate back or to status page
-      Get.back();
       // Refresh status
       await loadAgentStatus();
     } on ApiException catch (e) {

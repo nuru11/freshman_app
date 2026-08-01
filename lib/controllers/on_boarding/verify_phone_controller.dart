@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/views/views.dart';
 import 'package:vector_academy/services/services.dart';
+import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/utils/utils.dart';
 
 class VerifyPhoneController extends GetxController {
@@ -58,38 +59,22 @@ class VerifyPhoneController extends GetxController {
         );
         logger.i(response);
 
-        // For demo purposes, accept any 6-digit OTP
         if (otpController.text.length == 6) {
-          Get.snackbar(
+          Get.offAllNamed(VIEWS.home.path);
+          AppSnackbar.showSuccessAfterNav(
             'Success',
             'Phone verified successfully!',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
           );
-
-          // Navigate to home
-          Get.offAllNamed(VIEWS.home.path);
         } else {
           logger.e('Invalid OTP. Please try again.');
-          Get.snackbar(
-            'Error',
-            'Invalid OTP. Please try again.',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
-          );
+          AppSnackbar.showError('Error', 'Invalid OTP. Please try again.');
         }
       } catch (e) {
         logger.e(e.toString());
-        Get.snackbar(
+        AppSnackbar.showError(
           'Error',
-          'Failed to verify OTP. Please try again.',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+          ApiErrorMessage.from(e, fallback: 'Failed to verify OTP. Please try again.'),
         );
-        rethrow; // Throw the error to be handled by the caller
       } finally {
         _setLoading(false);
       }
@@ -100,23 +85,19 @@ class VerifyPhoneController extends GetxController {
     if (!_canResend) return;
 
     try {
-      // Simulate API call
+      // Local cooldown only — no resend API is wired yet.
       await Future.delayed(Duration(seconds: 1));
 
-      Get.snackbar(
-        'OTP Sent',
-        'A new OTP has been sent to $phoneNumber',
-        snackPosition: SnackPosition.BOTTOM,
+      AppSnackbar.showInfo(
+        'OTP Ready',
+        'You can enter a new OTP for $phoneNumber',
       );
 
       _startResendTimer();
     } catch (e) {
-      Get.snackbar(
+      AppSnackbar.showError(
         'Error',
-        'Failed to resend OTP. Please try again.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+        ApiErrorMessage.from(e, fallback: 'Failed to resend OTP. Please try again.'),
       );
     }
   }

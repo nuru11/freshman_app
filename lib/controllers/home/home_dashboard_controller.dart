@@ -127,9 +127,10 @@ class HomeDashboardController extends GetxController {
     }
   }
 
-  Future<void> loadSubjects() async {
+  Future<bool> loadSubjects({bool notifyOnEmptyFailure = false}) async {
     _isLoading = true;
     update();
+    var succeeded = true;
     try {
       logger.i('Loading subjects from api');
       final gradeId = _user?.grade.id;
@@ -143,16 +144,24 @@ class HomeDashboardController extends GetxController {
     } catch (e) {
       logger.i('Loading subjects from storage');
       logger.e(e);
+      succeeded = false;
       _subjects = await HiveSubjectsStorage().read('subjects');
+      if (notifyOnEmptyFailure && _subjects.isEmpty) {
+        AppSnackbar.showError(
+          'Error',
+          'Failed to load subjects. Please try again.',
+        );
+      }
     } finally {
       _isLoading = false;
       _rebuildLookups();
       _runUnifiedSearch();
       update();
     }
+    return succeeded;
   }
 
-  Future<void> loadFeaturedUpdates({bool showLoader = true}) async {
+  Future<bool> loadFeaturedUpdates({bool showLoader = true}) async {
     if (showLoader) {
       _isFeaturedUpdatesLoading = true;
       update();
@@ -198,8 +207,10 @@ class HomeDashboardController extends GetxController {
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       _featuredUpdates = merged.take(5).toList();
+      return true;
     } catch (e) {
       logger.e('Failed to load featured updates: $e');
+      return false;
     } finally {
       _isFeaturedUpdatesLoading = false;
       update();
@@ -208,15 +219,26 @@ class HomeDashboardController extends GetxController {
 
   Future<void> refreshData() async {
     loadAppHeader();
-    await Future.wait([
-      loadSubjects(),
+    final results = await Future.wait([
+      loadSubjects(notifyOnEmptyFailure: true),
       loadFeaturedUpdates(showLoader: false),
     ]);
-    Get.snackbar(
-      'Refreshed',
-      'Dashboard data updated successfully',
-      snackPosition: SnackPosition.BOTTOM,
-    );
+    final subjectsOk = results[0];
+    final featuredOk = results[1];
+
+    if (subjectsOk && featuredOk) {
+      AppSnackbar.showSuccess('Refreshed', 'Dashboard data updated successfully');
+    } else if (subjectsOk || featuredOk) {
+      AppSnackbar.showWarning(
+        'Partially refreshed',
+        'Some dashboard data could not be updated.',
+      );
+    } else {
+      AppSnackbar.showError(
+        'Refresh failed',
+        'Could not update dashboard data. Please try again.',
+      );
+    }
   }
 
   void openNotifications() {
@@ -245,10 +267,9 @@ class HomeDashboardController extends GetxController {
 
     if (selectedExam == null) {
       Get.find<MainNavigationController>().changeIndex(1);
-      Get.snackbar(
+      AppSnackbar.showInfo(
         'Exam Updated',
         'Refresh exams to view the latest exam details.',
-        snackPosition: SnackPosition.BOTTOM,
       );
       return;
     }
