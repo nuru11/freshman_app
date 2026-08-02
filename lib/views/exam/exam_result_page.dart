@@ -154,7 +154,12 @@ class ExamResultPage extends StatelessWidget {
               if (Get.isRegistered<QuestionPageController>()) {
                 Get.find<QuestionPageController>().reviewAnswers();
               }
-              Get.back();
+              // Use Navigator.pop instead of Get.back() — Get.back() tries to
+              // closeCurrentSnackbar() and can throw LateInitializationError,
+              // which leaves the user stuck on this results page.
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
             },
             icon: Icon(Icons.quiz_outlined),
             label: Text('Review Answers'),

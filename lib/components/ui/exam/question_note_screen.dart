@@ -29,7 +29,7 @@ class QuestionNoteScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
-                'Note',
+                'Direction',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: theme.colorScheme.onSecondary,

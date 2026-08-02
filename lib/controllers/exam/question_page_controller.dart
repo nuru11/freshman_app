@@ -41,6 +41,10 @@ class QuestionPageController extends GetxController {
   final HiveExamStorage _examStorage = HiveExamStorage();
   final ExamService _examService = ExamService();
 
+  bool _isInitialized = false;
+  int? _initializedExamId;
+  int? _initializedQuestionCount;
+
   void initializeQuiz({
     required String title,
     required int initialTimeMinutes,
@@ -52,6 +56,19 @@ class QuestionPageController extends GetxController {
     int examId = 0,
     String examModeType = 'both',
   }) {
+    // Skip re-init on rebuilds (e.g. returning from ExamResultPage) so
+    // answers, timer, and review state are not wiped.
+    if (_isInitialized &&
+        _initializedExamId == examId &&
+        _initializedQuestionCount == questions.length) {
+      this.onComplete = onComplete;
+      this.allowReview = allowReview;
+      this.showTimer = showTimer;
+      this.mode = mode;
+      this.examModeType = examModeType;
+      return;
+    }
+
     this.title = title;
     this.initialTimeMinutes = initialTimeMinutes;
     this.questions = questions;
@@ -62,24 +79,42 @@ class QuestionPageController extends GetxController {
     this.examId = examId;
     this.examModeType = examModeType;
 
+    _timer?.cancel();
+
     // Handle empty questions
     if (questions.isEmpty) {
       userAnswers.value = [];
       timeRemaining.value = 0;
       submittedQuestions.value = [];
+      _isInitialized = true;
+      _initializedExamId = examId;
+      _initializedQuestionCount = 0;
       return;
     }
 
     userAnswers.value = List.filled(questions.length, null);
     submittedQuestions.value = List.filled(questions.length, false);
     timeRemaining.value = initialTimeMinutes * 60;
-    _restoreProgressIfAny();
+    isCompleted.value = false;
+    showAnswers.value = false;
+    showSolution.value = false;
+    isSubmitting.value = false;
+    _clearNoteInterstitial();
+    currentQuestionIndex.value = 0;
+    _restoreProgressIfAny().whenComplete(
+      _maybeShowNoteInterstitialForCurrentIndex,
+    );
     if (showTimer) {
       _startTimer();
     }
+
+    _isInitialized = true;
+    _initializedExamId = examId;
+    _initializedQuestionCount = questions.length;
   }
 
   void _startTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (timeRemaining.value > 0) {
         timeRemaining.value--;
@@ -210,9 +245,21 @@ class QuestionPageController extends GetxController {
     noteBlockStartIndex = null;
   }
 
+  /// Show note screen when landing on a note-block start (including Q1).
+  void _maybeShowNoteInterstitialForCurrentIndex() {
+    if (isCompleted.value || showAnswers.value || questions.isEmpty) return;
+    final index = currentQuestionIndex.value;
+    if (!Question.isNoteBlockStart(questions, index)) return;
+    noteBlockStartIndex = index;
+    showingNoteInterstitial.value = true;
+    update();
+  }
+
   /// Check if next button should be enabled
   bool get canMoveToNext {
     if (showingNoteInterstitial.value) return true;
+    // In review mode, allow navigating freely (including skipped questions)
+    if (showAnswers.value) return true;
 
     if (userAnswers[currentQuestionIndex.value] == null) {
       return false; // No answer selected
@@ -325,6 +372,8 @@ class QuestionPageController extends GetxController {
 
     // Only navigate if submission was successful
     if (submissionSuccessful) {
+      isSubmitting.value = false;
+      update();
       _navigateToResults();
     }
   }
@@ -376,9 +425,28 @@ class QuestionPageController extends GetxController {
   }
 
   void finishQuiz() {
-    final timeSpent = (initialTimeMinutes * 60) - timeRemaining.value;
-    onComplete?.call(userAnswers.cast<int>().toList(), timeSpent);
-    Get.back();
+    // Results already shown after submit; exiting review should only leave the page.
+    if (!isCompleted.value) {
+      final timeSpent = (initialTimeMinutes * 60) - timeRemaining.value;
+      // Replace nulls (skipped) with 0 so onComplete always receives List<int>
+      final answers = userAnswers.map((a) => a ?? 0).toList();
+      onComplete?.call(answers, timeSpent);
+    }
+    _safePop();
+  }
+
+  /// Pop without Get.back()'s snackbar teardown (can throw LateInitializationError).
+  void _safePop() {
+    final navigator = Get.key.currentState;
+    if (navigator != null && navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+    try {
+      Get.back();
+    } catch (_) {
+      // Ignore GetX snackbar teardown failures
+    }
   }
 
   void toggleSolution() {
