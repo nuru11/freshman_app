@@ -3,6 +3,7 @@ import 'package:vector_academy/config/app_config.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/controllers/controllers.dart';
 import 'package:vector_academy/components/components.dart';
+import 'package:vector_academy/models/models.dart';
 
 class AddPlanPage extends StatelessWidget {
   const AddPlanPage({super.key});
@@ -142,15 +143,9 @@ class _AddPlanForm extends StatelessWidget {
                 textCapitalization: TextCapitalization.sentences,
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: controller.subjectController,
-                enabled: !controller.isSubmitting,
-                decoration: _fieldDecoration(
-                  label: subjectLabel,
-                  hint: 'e.g., Mathematics',
-                  prefixIcon: Icon(Icons.menu_book_rounded, color: primaryColor),
-                ),
-                textCapitalization: TextCapitalization.words,
+              _CoursesDropdown(
+                controller: controller,
+                decorationBuilder: _fieldDecoration,
               ),
               const SizedBox(height: 24),
               Text(
@@ -190,6 +185,36 @@ class _AddPlanForm extends StatelessWidget {
                       : null,
                 ),
               ),
+              const SizedBox(height: 12),
+              Text(
+                'Time format',
+                style: TextStyle(fontSize: 12, color: onSurfaceVariant),
+              ),
+              const SizedBox(height: 8),
+              FreshmanSurfaceCard(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _TimeModeChip(
+                        label: 'Local time',
+                        subtitle: 'Ethiopian',
+                        selected: controller.useLocalTime,
+                        enabled: !controller.isSubmitting,
+                        onTap: () => controller.setUseLocalTime(true),
+                      ),
+                    ),
+                    Expanded(
+                      child: _TimeModeChip(
+                        label: 'Foreign time',
+                        subtitle: 'Western',
+                        selected: !controller.useLocalTime,
+                        enabled: !controller.isSubmitting,
+                        onTap: () => controller.setUseLocalTime(false),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 10),
               Opacity(
                 opacity: controller.isSubmitting ? 0.6 : 1.0,
@@ -197,12 +222,8 @@ class _AddPlanForm extends StatelessWidget {
                   icon: Icons.play_arrow_rounded,
                   iconBg: primaryColor.withValues(alpha: 0.08),
                   iconColor: primaryColor,
-                  label: 'Start Time *',
-                  value: controller.startTime != null
-                      ? '${controller.startTime!.hour.toString().padLeft(2, '0')}:${controller.startTime!.minute.toString().padLeft(2, '0')}'
-                      : controller.selectedDate != null
-                          ? 'Required'
-                          : 'No start time set',
+                  label: 'Start Time (${controller.timeModeLabel}) *',
+                  value: controller.formatStartTimeDisplay(),
                   valueColor: controller.startTime != null
                       ? onSurfaceColor
                       : controller.selectedDate != null
@@ -220,12 +241,8 @@ class _AddPlanForm extends StatelessWidget {
                   icon: Icons.stop_rounded,
                   iconBg: secondaryColor.withValues(alpha: 0.1),
                   iconColor: secondaryColor,
-                  label: 'End Time *',
-                  value: controller.endTime != null
-                      ? '${controller.endTime!.hour.toString().padLeft(2, '0')}:${controller.endTime!.minute.toString().padLeft(2, '0')}'
-                      : controller.selectedDate != null
-                          ? 'Required'
-                          : 'No end time set',
+                  label: 'End Time (${controller.timeModeLabel}) *',
+                  value: controller.formatEndTimeDisplay(),
                   valueColor: controller.endTime != null
                       ? onSurfaceColor
                       : controller.selectedDate != null
@@ -358,6 +375,135 @@ class _AddPlanForm extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CoursesDropdown extends StatelessWidget {
+  final AddPlanController controller;
+  final InputDecoration Function({
+    required String label,
+    String? hint,
+    Widget? prefixIcon,
+  }) decorationBuilder;
+
+  const _CoursesDropdown({
+    required this.controller,
+    required this.decorationBuilder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller.isLoadingCourses && controller.courses.isEmpty) {
+      return InputDecorator(
+        decoration: decorationBuilder(
+          label: subjectLabel,
+          prefixIcon: Icon(Icons.menu_book_rounded, color: primaryColor),
+        ),
+        child: SizedBox(
+          height: 24,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: primaryColor,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final items = <DropdownMenuItem<Subject>>[
+      ...controller.courses.map(
+        (course) => DropdownMenuItem<Subject>(
+          value: course,
+          child: Text(course.name, overflow: TextOverflow.ellipsis),
+        ),
+      ),
+    ];
+
+    final hasLegacy =
+        controller.legacySubjectName != null &&
+        controller.legacySubjectName!.isNotEmpty &&
+        controller.selectedCourse == null;
+
+    return DropdownButtonFormField<Subject>(
+      value: controller.selectedCourseForDropdown,
+      items: items,
+      onChanged: controller.isSubmitting || controller.courses.isEmpty
+          ? null
+          : controller.selectCourse,
+      decoration: decorationBuilder(
+        label: subjectLabel,
+        hint: controller.courses.isEmpty
+            ? 'No courses available'
+            : hasLegacy
+                ? controller.legacySubjectName
+                : 'Select a course',
+        prefixIcon: Icon(Icons.menu_book_rounded, color: primaryColor),
+      ),
+      isExpanded: true,
+    );
+  }
+}
+
+class _TimeModeChip extends StatelessWidget {
+  final String label;
+  final String subtitle;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _TimeModeChip({
+    required this.label,
+    required this.subtitle,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? primaryColor.withValues(alpha: 0.08)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? primaryColor : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected ? primaryColor : onSurfaceColor,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 11,
+                color: selected ? primaryColor : onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
       ),
     );

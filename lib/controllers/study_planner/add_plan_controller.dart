@@ -2,17 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/controllers/controllers.dart';
 import 'package:vector_academy/models/models.dart';
+import 'package:vector_academy/services/services.dart';
+import 'package:vector_academy/utils/device/device.dart';
+import 'package:vector_academy/utils/storages/storages.dart';
 import 'package:vector_academy/utils/utils.dart';
 
 class AddPlanController extends GetxController {
   late TextEditingController titleController;
   late TextEditingController descriptionController;
-  late TextEditingController subjectController;
 
   DateTime? selectedDate;
   TimeOfDay? startTime;
   TimeOfDay? endTime;
   Set<int> selectedDays = <int>{}; // Days of week (1=Monday, 7=Sunday)
+
+  /// false = Foreign (Western), true = Local (Ethiopian)
+  bool useLocalTime = false;
+
+  List<Subject> courses = [];
+  Subject? selectedCourse;
+  /// Preserves legacy free-text subject when it doesn't match a course.
+  String? legacySubjectName;
+  bool isLoadingCourses = false;
 
   final formKey = GlobalKey<FormState>();
   bool isSubmitting = false;
@@ -29,6 +40,23 @@ class AddPlanController extends GetxController {
 
   StudyPlan? plan; // If provided, we're editing
 
+  String get timeModeLabel => useLocalTime ? 'Local' : 'Foreign';
+
+  String get selectedSubjectName {
+    if (selectedCourse != null) return selectedCourse!.name;
+    return legacySubjectName ?? '';
+  }
+
+  /// Resolves [selectedCourse] against the current [courses] list by id
+  /// so DropdownButtonFormField always gets an item from its items list.
+  Subject? get selectedCourseForDropdown {
+    if (selectedCourse == null) return null;
+    for (final course in courses) {
+      if (course.id == selectedCourse!.id) return course;
+    }
+    return null;
+  }
+
   @override
   void onInit() {
     super.onInit();
@@ -40,8 +68,8 @@ class AddPlanController extends GetxController {
     if (plan != null) {
       titleController = TextEditingController(text: plan!.title);
       descriptionController = TextEditingController(text: plan!.description);
-      subjectController = TextEditingController(text: plan!.subject);
-      // Use startDate if available, otherwise fall back to dueDate
+      // Stored times are Western; default to Foreign on edit
+      useLocalTime = false;
       selectedDate = plan!.startDate ?? plan!.dueDate;
       startTime = plan!.startDate != null
           ? TimeOfDay.fromDateTime(plan!.startDate!)
@@ -52,22 +80,103 @@ class AddPlanController extends GetxController {
           ? TimeOfDay.fromDateTime(plan!.endDate!)
           : null;
       selectedDays = Set<int>.from(plan!.repeatDays);
+      if (plan!.subject.isNotEmpty) {
+        legacySubjectName = plan!.subject;
+      }
     } else {
       titleController = TextEditingController();
       descriptionController = TextEditingController();
-      subjectController = TextEditingController();
       selectedDate = null;
       startTime = null;
       endTime = null;
       selectedDays = <int>{};
+      useLocalTime = false;
     }
+
+    loadCourses();
+  }
+
+  Future<void> loadCourses() async {
+    isLoadingCourses = true;
+    update();
+
+    try {
+      // Prefer cache first for fast UI
+      final cached = await HiveSubjectsStorage().read('subjects');
+      if (cached.isNotEmpty) {
+        courses = cached;
+        _syncSelectedCourse();
+        isLoadingCourses = false;
+        update();
+      }
+
+      final user = await HiveUserStorage().getUser();
+      final device = await UserDevice.getDeviceInfo(user?.phoneNumber ?? '');
+      final fetched = await SubjectsService().getSubjects(
+        device.id,
+        gradeId: user?.grade.id ?? 0,
+      );
+      courses = fetched;
+      await HiveSubjectsStorage().write('subjects', courses);
+      _syncSelectedCourse();
+    } catch (e) {
+      logger.e('Failed to load courses: $e');
+      if (courses.isEmpty) {
+        try {
+          courses = await HiveSubjectsStorage().read('subjects');
+          _syncSelectedCourse();
+        } catch (_) {}
+      }
+    } finally {
+      isLoadingCourses = false;
+      update();
+    }
+  }
+
+  void _syncSelectedCourse() {
+    final name = legacySubjectName ?? plan?.subject;
+    if (name == null || name.isEmpty) return;
+
+    for (final course in courses) {
+      if (course.name == name) {
+        selectedCourse = course;
+        legacySubjectName = null;
+        return;
+      }
+    }
+  }
+
+  void selectCourse(Subject? course) {
+    selectedCourse = course;
+    if (course != null) {
+      legacySubjectName = null;
+    }
+    update();
+  }
+
+  void setUseLocalTime(bool local) {
+    if (useLocalTime == local) return;
+
+    // Convert currently displayed times between clocks
+    if (startTime != null) {
+      startTime = local
+          ? EthiopianTime.toEthiopian(startTime!)
+          : EthiopianTime.toWestern(startTime!);
+    }
+    if (endTime != null) {
+      endTime = local
+          ? EthiopianTime.toEthiopian(endTime!)
+          : EthiopianTime.toWestern(endTime!);
+    }
+
+    useLocalTime = local;
+    update();
   }
 
   @override
   void onClose() {
     titleController.dispose();
     descriptionController.dispose();
-    subjectController.dispose();
     super.onClose();
   }
 
@@ -100,7 +209,7 @@ class AddPlanController extends GetxController {
     );
     if (time != null) {
       startTime = time;
-      // Ensure end time is after start time
+      // Ensure end time is after start time (same clock)
       if (endTime != null) {
         final startMinutes = time.hour * 60 + time.minute;
         final endMinutes = endTime!.hour * 60 + endTime!.minute;
@@ -125,7 +234,6 @@ class AddPlanController extends GetxController {
         final startMinutes = startTime!.hour * 60 + startTime!.minute;
         final endMinutes = time.hour * 60 + time.minute;
         if (endMinutes <= startMinutes) {
-          // Show error or adjust
           AppSnackbar.showError('Error', 'End time must be after start time');
           return;
         }
@@ -164,6 +272,28 @@ class AddPlanController extends GetxController {
     update();
   }
 
+  String _formatTimeOfDay(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  String formatStartTimeDisplay() {
+    if (startTime == null) {
+      return selectedDate != null ? 'Required' : 'No start time set';
+    }
+    return _formatTimeOfDay(startTime!);
+  }
+
+  String formatEndTimeDisplay() {
+    if (endTime == null) {
+      return selectedDate != null ? 'Required' : 'No end time set';
+    }
+    return _formatTimeOfDay(endTime!);
+  }
+
+  TimeOfDay _toWesternTime(TimeOfDay time) {
+    return useLocalTime ? EthiopianTime.toWestern(time) : time;
+  }
+
   Future<void> savePlan() async {
     if (isSubmitting) {
       return; // Prevent double submission
@@ -190,30 +320,30 @@ class AddPlanController extends GetxController {
     final controller = Get.find<StudyPlannerController>();
 
     try {
-      // Build startDate and endDate from selected date and times
-      DateTime? startDate;
-      DateTime? endDate;
-      DateTime? dueDate; // Keep for backward compatibility
+      // Convert displayed times to Western for storage/notifications
+      final westernStart = _toWesternTime(startTime!);
+      final westernEnd = _toWesternTime(endTime!);
 
-      if (startTime != null && endTime != null) {
-        var date = DateTime.now();
-        startDate = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          startTime!.hour,
-          startTime!.minute,
-        );
-        endDate = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          endTime!.hour,
-          endTime!.minute,
-        );
-        // Set dueDate to endDate for backward compatibility
-        dueDate = endDate;
-      }
+      // Build startDate and endDate from selected date and times
+      final date = selectedDate ?? DateTime.now();
+      final startDate = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        westernStart.hour,
+        westernStart.minute,
+      );
+      final endDate = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        westernEnd.hour,
+        westernEnd.minute,
+      );
+      // Set dueDate to endDate for backward compatibility
+      final dueDate = endDate;
+
+      final subject = selectedSubjectName;
 
       if (plan != null) {
         // Update existing plan
@@ -221,7 +351,7 @@ class AddPlanController extends GetxController {
           id: plan!.id,
           title: titleController.text.trim(),
           description: descriptionController.text.trim(),
-          subject: subjectController.text.trim(),
+          subject: subject,
           dueDate: dueDate,
           startDate: startDate,
           endDate: endDate,
@@ -238,7 +368,7 @@ class AddPlanController extends GetxController {
           id: 0, // Will be set by backend
           title: titleController.text.trim(),
           description: descriptionController.text.trim(),
-          subject: subjectController.text.trim(),
+          subject: subject,
           dueDate: dueDate,
           startDate: startDate,
           endDate: endDate,
@@ -257,7 +387,7 @@ class AddPlanController extends GetxController {
       logger.d('navigate back to study planner page');
 
       // Show success message after navigation
-      AppSnackbar.showSuccessAfterNav(
+      AppSnackbar.showSuccess(
         'Success',
         plan != null ? 'Study plan updated' : 'Study plan created',
       );
