@@ -51,6 +51,18 @@ class MyApp extends StatelessWidget {
       },
       getPages: [
         GetPage(
+          name: VIEWS.login.path,
+          page: () => Login(),
+          bindings: [
+            BindingsBuilder(() {
+              Get.put(LoginController(), permanent: true);
+            }),
+            BindingsBuilder(() {
+              Get.lazyPut(() => MainNavigationController());
+            }),
+          ],
+        ),
+        GetPage(
           name: VIEWS.home.path,
           page: () => const Home(),
           binding: BindingsBuilder(() {
@@ -63,18 +75,6 @@ class MyApp extends StatelessWidget {
             Get.put(StudyPlannerService(), permanent: true);
             Get.put(StudyPlannerController(), permanent: true);
           }),
-        ),
-        GetPage(
-          name: VIEWS.login.path,
-          page: () => Login(),
-          bindings: [
-            BindingsBuilder(() {
-              Get.put(LoginController(), permanent: true);
-            }),
-            BindingsBuilder(() {
-              Get.lazyPut(() => MainNavigationController());
-            }),
-          ],
         ),
         GetPage(
           name: VIEWS.register.path,
@@ -163,7 +163,7 @@ class MyApp extends StatelessWidget {
           }),
         ),
       ],
-      initialRoute: service.user.value != null
+      initialRoute: service.isAuthenticated
           ? VIEWS.home.path
           : VIEWS.login.path,
     );

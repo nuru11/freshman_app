@@ -1,6 +1,9 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:get/get.dart' hide Response, FormData, MultipartFile;
 import "package:vector_academy/utils/utils.dart";
+import 'package:vector_academy/services/auth.dart';
+import 'package:vector_academy/views/views.dart';
 
 class BaseApiClient {
   final String baseUrl = defaultApiURL;
@@ -37,23 +40,23 @@ class BaseApiClient {
         },
         onError: (error, handler) async {
           // Handle 401 errors and attempt token refresh
-          if (error.response?.statusCode == 401 && refreshToken.isNotEmpty) {
-            try {
-              AppSnackbar.showError('Error', 'Unauthorized');
-
-              // Get.offAllNamed(VIEWS.login.path);
-              final newToken = await _refreshToken();
-              if (newToken != null) {
-                // Retry the original request with new token
-                final originalRequest = error.requestOptions;
-                originalRequest.headers['Authorization'] = 'Bearer $newToken';
-                final response = await dio.fetch(originalRequest);
-                handler.resolve(response);
-                return;
+          if (error.response?.statusCode == 401) {
+            if (refreshToken.isNotEmpty) {
+              try {
+                final newToken = await _refreshToken();
+                if (newToken != null) {
+                  // Retry the original request with new token
+                  final originalRequest = error.requestOptions;
+                  originalRequest.headers['Authorization'] = 'Bearer $newToken';
+                  final response = await dio.fetch(originalRequest);
+                  handler.resolve(response);
+                  return;
+                }
+              } catch (_) {
+                // Token refresh failed
               }
-            } catch (e) {
-              // Token refresh failed, proceed with error
             }
+            await _forceLogout();
           }
           handler.next(error);
         },
@@ -77,10 +80,17 @@ class BaseApiClient {
       }
     } catch (e) {
       // Clear tokens on refresh failure
-      accessToken = '';
-      refreshToken = '';
+      clearTokens();
     }
     return null;
+  }
+
+  Future<void> _forceLogout() async {
+    clearTokens();
+    if (Get.isRegistered<AuthService>()) {
+      await Get.find<AuthService>().logout();
+    }
+    Get.offAllNamed(VIEWS.login.path);
   }
 
   // Set authentication tokens
@@ -90,7 +100,7 @@ class BaseApiClient {
   }
 
   // Clear authentication tokens
-  void clearTokens() {
+  static void clearTokens() {
     accessToken = '';
     refreshToken = '';
   }

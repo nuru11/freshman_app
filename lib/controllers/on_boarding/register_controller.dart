@@ -112,9 +112,10 @@ class RegisterController extends GetxController {
 
         logger.i(response);
 
-        await AuthService().saveAuthToken(response.tokens);
+        final authService = Get.find<AuthService>();
+        await authService.saveAuthToken(response.tokens);
         final user = await UserService().getUser();
-        await AuthService().saveUser(user);
+        await authService.saveUser(user);
 
         BaseApiClient.setTokens(
           response.tokens.access,

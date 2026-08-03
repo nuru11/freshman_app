@@ -302,7 +302,9 @@ class DeepLinkService {
   void _navigateToRoute(String route) {
     // Check if user is logged in
     final authService = Get.find<AuthService>();
-    if (authService.user.value == null && route != VIEWS.login.path) {
+    if (!authService.isAuthenticated &&
+        route != VIEWS.login.path &&
+        route != VIEWS.register.path) {
       // User not logged in, navigate to login first
       Get.offAllNamed(VIEWS.login.path);
     } else if (route == VIEWS.register.path) {

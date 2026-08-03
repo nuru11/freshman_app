@@ -89,7 +89,7 @@ class ProfileController extends GetxController {
     try {
       final user_ = await UserService().getUser();
 
-      await AuthService().saveUser(user_);
+      await _authService.saveUser(user_);
     } catch (e) {
       logger.e(e);
     } finally {
@@ -154,7 +154,7 @@ class ProfileController extends GetxController {
         grade: _selectedGrade?.id ?? 0,
         profilePicturePath: _selectedProfileImage?.path,
       );
-      await AuthService().saveUser(user_);
+      await _authService.saveUser(user_);
       hasChangeOnEditProfile = false;
       _selectedProfileImage = null;
       _selectedGrade = user?.grade;
@@ -282,7 +282,7 @@ class ProfileController extends GetxController {
       final user_ = await UserService().uploadProfilePicture(
         _selectedProfileImage!.path,
       );
-      await AuthService().saveUser(user_);
+      await _authService.saveUser(user_);
       _selectedProfileImage = null;
       AppSnackbar.showSuccess('Success', 'Profile picture updated');
     } catch (e) {
@@ -307,11 +307,9 @@ class ProfileController extends GetxController {
     Get.toNamed(VIEWS.about.path);
   }
 
-  void logout() {
-    // Navigate to login and clear navigation stack
+  void logout() async {
+    await _authService.logout();
     Get.offAllNamed(VIEWS.login.path);
-    // Logout from the auth service
-    AuthService().logout();
   }
 
   void showDeleteAccountDialog() {

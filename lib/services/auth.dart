@@ -10,11 +10,8 @@ class AuthService extends GetxService {
   Rx<AuthToken?> authToken = Rx<AuthToken?>(null);
   Rx<User?> user = Rx<User?>(null);
 
-  @override
-  Future<void> onInit() async {
-    await loadUser();
-    super.onInit();
-  }
+  bool get isAuthenticated =>
+      user.value != null && (authToken.value?.access.isNotEmpty ?? false);
 
   Future<void> saveAuthToken(AuthToken authToken) async {
     await _hiveAuthStorage.setAuthToken(authToken);
@@ -30,6 +27,15 @@ class AuthService extends GetxService {
   Future<void> loadUser() async {
     authToken.value = await _hiveAuthStorage.getAuthToken();
     user.value = await _hiveUserStorage.getUser();
+
+    final hasUser = user.value != null;
+    final hasAccessToken = authToken.value?.access.isNotEmpty ?? false;
+
+    if (hasUser != hasAccessToken) {
+      await logout();
+      return;
+    }
+
     BaseApiClient.setTokens(
       authToken.value?.access ?? '',
       authToken.value?.refresh ?? '',
@@ -41,6 +47,7 @@ class AuthService extends GetxService {
     await _hiveUserStorage.clear();
     authToken.value = null;
     user.value = null;
+    BaseApiClient.clearTokens();
   }
 
   void listenToken(void Function(AuthToken?) callback) {

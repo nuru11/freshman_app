@@ -44,8 +44,7 @@ class NavigationDrawerController extends GetxController {
   }
 
   void logout() async {
-    // Navigate to login and clear navigation stack
-    await AuthService().logout();
+    await Get.find<AuthService>().logout();
     Get.offAllNamed(VIEWS.login.path);
   }
 }
