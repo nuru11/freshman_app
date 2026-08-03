@@ -29,6 +29,33 @@ class StudyReminderPermissionDialogs {
     return result ?? false;
   }
 
+  /// `true` if the user chose **Open settings** (app notification settings).
+  static Future<bool> showNotificationSettingsPrompt(
+    BuildContext context,
+  ) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Enable notifications'),
+        content: const Text(
+          'Notifications are still off. Open settings to enable them so we can remind you about your study plans.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Not now'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Open settings'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   /// `true` if the user chose **Open settings** (exact alarm / Alarms & reminders).
   static Future<bool> showExactAlarmRationale(BuildContext context) async {
     final result = await showDialog<bool>(

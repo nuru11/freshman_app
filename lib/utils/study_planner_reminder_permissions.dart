@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:vector_academy/components/ui/dialog/study_reminder_permission_dialogs.dart';
 import 'package:vector_academy/services/notification_service.dart';
 import 'package:vector_academy/utils/storages/storages.dart';
@@ -12,22 +13,37 @@ class StudyPlannerReminderPermissions {
 
   /// Shows rationale dialogs and requests OS permissions when appropriate.
   /// Call from [StudyPlannerController] when the user saves a plan — not from background sync.
+  ///
+  /// If notifications are disabled, prompts on every save until the user enables them.
   static Future<void> ensureBeforeScheduling() async {
-    final context = Get.overlayContext ?? Get.context;
-    if (context == null) {
+    if (Get.overlayContext == null && Get.context == null) {
       logger.w('No overlay context for permission dialogs; skipping');
       return;
     }
 
     final notif = Get.find<LocalNotificationService>();
 
-    if (!ConfigPreference.hasAskedStudyPlanNotificationPermission()) {
-      final proceed = await StudyReminderPermissionDialogs.showNotificationRationale(
-        context,
-      );
-      await ConfigPreference.setAskedStudyPlanNotificationPermission(true);
+    if (!await notif.isNotificationAllowed()) {
+      final ctxForNotif = Get.overlayContext ?? Get.context;
+      if (ctxForNotif == null || !ctxForNotif.mounted) return;
+      final proceed =
+          await StudyReminderPermissionDialogs.showNotificationRationale(
+            ctxForNotif,
+          );
       if (proceed) {
-        await notif.ensureNotificationPermission();
+        final granted = await notif.ensureNotificationPermission();
+        if (!granted && !await notif.isNotificationAllowed()) {
+          final ctxForSettings = Get.overlayContext ?? Get.context;
+          if (ctxForSettings != null && ctxForSettings.mounted) {
+            final openSettings =
+                await StudyReminderPermissionDialogs.showNotificationSettingsPrompt(
+                  ctxForSettings,
+                );
+            if (openSettings) {
+              await openAppSettings();
+            }
+          }
+        }
       }
     }
 

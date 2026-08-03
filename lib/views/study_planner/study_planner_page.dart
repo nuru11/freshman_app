@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:vector_academy/controllers/controllers.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/components/components.dart';
+import 'package:vector_academy/utils/utils.dart';
 
 class StudyPlannerPage extends StatelessWidget {
   const StudyPlannerPage({super.key});
@@ -519,10 +520,8 @@ class StudyPlannerPage extends StatelessWidget {
     final dueDate = plan.dueDate;
 
     if (startDate != null && endDate != null) {
-      final startTime =
-          '${startDate.hour.toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')}';
-      final endTime =
-          '${endDate.hour.toString().padLeft(2, '0')}:${endDate.minute.toString().padLeft(2, '0')}';
+      final startTime = EthiopianTime.formatWesternDateTimeClock(startDate);
+      final endTime = EthiopianTime.formatWesternDateTimeClock(endDate);
 
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
@@ -572,8 +571,7 @@ class StudyPlannerPage extends StatelessWidget {
       'Sunday',
     ];
     final dayOfWeek = daysOfWeek[dateTime.weekday - 1];
-    final time =
-        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    final time = EthiopianTime.formatWesternDateTimeClock(dateTime);
 
     if (date == today) {
       return 'Today, $dayOfWeek $time';

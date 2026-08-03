@@ -570,7 +570,7 @@ class StudyPlannerController extends GetxController {
   }
 
   String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${EthiopianTime.formatWesternDateTimeClock(dateTime)}';
   }
 
   String _formatRepeatDays(List<int> days) {

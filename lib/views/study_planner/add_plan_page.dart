@@ -186,43 +186,13 @@ class _AddPlanForm extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Text(
-                'Time format',
-                style: TextStyle(fontSize: 12, color: onSurfaceVariant),
-              ),
-              const SizedBox(height: 8),
-              FreshmanSurfaceCard(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _TimeModeChip(
-                        label: 'Local time',
-                        subtitle: 'Ethiopian',
-                        selected: controller.useLocalTime,
-                        enabled: !controller.isSubmitting,
-                        onTap: () => controller.setUseLocalTime(true),
-                      ),
-                    ),
-                    Expanded(
-                      child: _TimeModeChip(
-                        label: 'Foreign time',
-                        subtitle: 'Western',
-                        selected: !controller.useLocalTime,
-                        enabled: !controller.isSubmitting,
-                        onTap: () => controller.setUseLocalTime(false),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
               Opacity(
                 opacity: controller.isSubmitting ? 0.6 : 1.0,
                 child: _pickerTile(
                   icon: Icons.play_arrow_rounded,
                   iconBg: primaryColor.withValues(alpha: 0.08),
                   iconColor: primaryColor,
-                  label: 'Start Time (${controller.timeModeLabel}) *',
+                  label: 'Start Time *',
                   value: controller.formatStartTimeDisplay(),
                   valueColor: controller.startTime != null
                       ? onSurfaceColor
@@ -241,7 +211,7 @@ class _AddPlanForm extends StatelessWidget {
                   icon: Icons.stop_rounded,
                   iconBg: secondaryColor.withValues(alpha: 0.1),
                   iconColor: secondaryColor,
-                  label: 'End Time (${controller.timeModeLabel}) *',
+                  label: 'End Time *',
                   value: controller.formatEndTimeDisplay(),
                   valueColor: controller.endTime != null
                       ? onSurfaceColor
@@ -449,63 +419,6 @@ class _CoursesDropdown extends StatelessWidget {
         prefixIcon: Icon(Icons.menu_book_rounded, color: primaryColor),
       ),
       isExpanded: true,
-    );
-  }
-}
-
-class _TimeModeChip extends StatelessWidget {
-  final String label;
-  final String subtitle;
-  final bool selected;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  const _TimeModeChip({
-    required this.label,
-    required this.subtitle,
-    required this.selected,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected
-              ? primaryColor.withValues(alpha: 0.08)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: selected ? primaryColor : Colors.transparent,
-            width: 1.5,
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: selected ? primaryColor : onSurfaceColor,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 11,
-                color: selected ? primaryColor : onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

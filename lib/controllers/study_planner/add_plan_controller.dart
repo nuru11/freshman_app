@@ -16,9 +16,6 @@ class AddPlanController extends GetxController {
   TimeOfDay? endTime;
   Set<int> selectedDays = <int>{}; // Days of week (1=Monday, 7=Sunday)
 
-  /// false = Foreign (Western), true = Local (Ethiopian)
-  bool useLocalTime = false;
-
   List<Subject> courses = [];
   Subject? selectedCourse;
   /// Preserves legacy free-text subject when it doesn't match a course.
@@ -39,8 +36,6 @@ class AddPlanController extends GetxController {
   ];
 
   StudyPlan? plan; // If provided, we're editing
-
-  String get timeModeLabel => useLocalTime ? 'Local' : 'Foreign';
 
   String get selectedSubjectName {
     if (selectedCourse != null) return selectedCourse!.name;
@@ -68,16 +63,17 @@ class AddPlanController extends GetxController {
     if (plan != null) {
       titleController = TextEditingController(text: plan!.title);
       descriptionController = TextEditingController(text: plan!.description);
-      // Stored times are Western; default to Foreign on edit
-      useLocalTime = false;
+      // Stored times are Western; convert to Ethiopian for display
       selectedDate = plan!.startDate ?? plan!.dueDate;
       startTime = plan!.startDate != null
-          ? TimeOfDay.fromDateTime(plan!.startDate!)
+          ? EthiopianTime.toEthiopian(TimeOfDay.fromDateTime(plan!.startDate!))
           : (plan!.dueDate != null
-                ? TimeOfDay.fromDateTime(plan!.dueDate!)
+                ? EthiopianTime.toEthiopian(
+                    TimeOfDay.fromDateTime(plan!.dueDate!),
+                  )
                 : null);
       endTime = plan!.endDate != null
-          ? TimeOfDay.fromDateTime(plan!.endDate!)
+          ? EthiopianTime.toEthiopian(TimeOfDay.fromDateTime(plan!.endDate!))
           : null;
       selectedDays = Set<int>.from(plan!.repeatDays);
       if (plan!.subject.isNotEmpty) {
@@ -90,7 +86,6 @@ class AddPlanController extends GetxController {
       startTime = null;
       endTime = null;
       selectedDays = <int>{};
-      useLocalTime = false;
     }
 
     loadCourses();
@@ -154,25 +149,6 @@ class AddPlanController extends GetxController {
     update();
   }
 
-  void setUseLocalTime(bool local) {
-    if (useLocalTime == local) return;
-
-    // Convert currently displayed times between clocks
-    if (startTime != null) {
-      startTime = local
-          ? EthiopianTime.toEthiopian(startTime!)
-          : EthiopianTime.toWestern(startTime!);
-    }
-    if (endTime != null) {
-      endTime = local
-          ? EthiopianTime.toEthiopian(endTime!)
-          : EthiopianTime.toWestern(endTime!);
-    }
-
-    useLocalTime = local;
-    update();
-  }
-
   @override
   void onClose() {
     titleController.dispose();
@@ -203,9 +179,9 @@ class AddPlanController extends GetxController {
   }
 
   Future<void> selectStartTime(BuildContext context) async {
-    final time = await showTimePicker(
+    final time = await EthiopianTime.showDayNightTimePicker(
       context: context,
-      initialTime: startTime ?? TimeOfDay(hour: 9, minute: 0),
+      initialTime: startTime ?? const TimeOfDay(hour: 9, minute: 0),
     );
     if (time != null) {
       startTime = time;
@@ -225,9 +201,9 @@ class AddPlanController extends GetxController {
   }
 
   Future<void> selectEndTime(BuildContext context) async {
-    final time = await showTimePicker(
+    final time = await EthiopianTime.showDayNightTimePicker(
       context: context,
-      initialTime: endTime ?? TimeOfDay(hour: 10, minute: 0),
+      initialTime: endTime ?? const TimeOfDay(hour: 10, minute: 0),
     );
     if (time != null) {
       if (startTime != null) {
@@ -272,26 +248,18 @@ class AddPlanController extends GetxController {
     update();
   }
 
-  String _formatTimeOfDay(TimeOfDay time) {
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-  }
-
   String formatStartTimeDisplay() {
     if (startTime == null) {
       return selectedDate != null ? 'Required' : 'No start time set';
     }
-    return _formatTimeOfDay(startTime!);
+    return EthiopianTime.formatTimeOfDay(startTime!);
   }
 
   String formatEndTimeDisplay() {
     if (endTime == null) {
       return selectedDate != null ? 'Required' : 'No end time set';
     }
-    return _formatTimeOfDay(endTime!);
-  }
-
-  TimeOfDay _toWesternTime(TimeOfDay time) {
-    return useLocalTime ? EthiopianTime.toWestern(time) : time;
+    return EthiopianTime.formatTimeOfDay(endTime!);
   }
 
   Future<void> savePlan() async {
@@ -320,9 +288,9 @@ class AddPlanController extends GetxController {
     final controller = Get.find<StudyPlannerController>();
 
     try {
-      // Convert displayed times to Western for storage/notifications
-      final westernStart = _toWesternTime(startTime!);
-      final westernEnd = _toWesternTime(endTime!);
+      // Convert Ethiopian display times to Western for storage/notifications
+      final westernStart = EthiopianTime.toWestern(startTime!);
+      final westernEnd = EthiopianTime.toWestern(endTime!);
 
       // Build startDate and endDate from selected date and times
       final date = selectedDate ?? DateTime.now();
