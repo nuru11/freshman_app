@@ -17,6 +17,8 @@ export 'common/search_page.dart';
 export 'common/notifications_page.dart';
 export 'exam/exam_detail_page.dart';
 export 'exam/exam_result_page.dart';
+export 'exam/exam_standings_section.dart';
+export 'exam/exam_my_results_section.dart';
 export 'news/news_detail_page.dart';
 export 'quiz/quiz_detail_page.dart';
 export 'quiz/quiz_taking_page.dart';

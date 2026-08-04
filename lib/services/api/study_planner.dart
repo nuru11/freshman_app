@@ -92,8 +92,7 @@ class StudyPlannerService extends GetxController {
       }
 
       throw ApiException(
-        response.data['detail'] ??
-            response.data['error']?['message'] ??
+        ApiErrorMessage.fromData(response.data) ??
             'Failed to create study plan',
       );
     } catch (e) {
@@ -119,8 +118,7 @@ class StudyPlannerService extends GetxController {
       }
 
       throw ApiException(
-        response.data['detail'] ??
-            response.data['error']?['message'] ??
+        ApiErrorMessage.fromData(response.data) ??
             'Failed to update study plan',
       );
     } catch (e) {
@@ -202,10 +200,13 @@ class StudyPlannerService extends GetxController {
 
   // Convert StudyPlan to API JSON format (snake_case)
   Map<String, dynamic> _planToApiJson(StudyPlan plan) {
+    final description = plan.description.trim().isEmpty
+        ? plan.title
+        : plan.description;
     print('plan to api json: ${plan.toJson().toString()}');
     return {
       'title': plan.title,
-      'description': plan.description,
+      'description': description,
       'subject': plan.subject,
       'due_date': plan.dueDate?.toIso8601String(),
       'start_date': plan.startDate?.toIso8601String(),

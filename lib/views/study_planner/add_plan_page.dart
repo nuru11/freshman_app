@@ -159,36 +159,6 @@ class _AddPlanForm extends StatelessWidget {
               Opacity(
                 opacity: controller.isSubmitting ? 0.6 : 1.0,
                 child: _pickerTile(
-                  icon: Icons.calendar_today_rounded,
-                  iconBg: primaryColor.withValues(alpha: 0.1),
-                  iconColor: primaryColor,
-                  label: 'Date (Optional)',
-                  value: controller.selectedDate != null
-                      ? '${controller.getDayOfWeek(controller.selectedDate!)}, ${controller.selectedDate!.day}/${controller.selectedDate!.month}/${controller.selectedDate!.year}'
-                      : 'No date set',
-                  valueColor: controller.selectedDate != null
-                      ? onSurfaceColor
-                      : onSurfaceVariant,
-                  onTap: controller.isSubmitting
-                      ? null
-                      : () => controller.selectDate(context),
-                  trailing: controller.selectedDate != null
-                      ? IconButton(
-                          icon: const Icon(Icons.close, size: 18),
-                          color: onSurfaceVariant,
-                          onPressed: controller.isSubmitting
-                              ? null
-                              : controller.clearDate,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        )
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Opacity(
-                opacity: controller.isSubmitting ? 0.6 : 1.0,
-                child: _pickerTile(
                   icon: Icons.play_arrow_rounded,
                   iconBg: primaryColor.withValues(alpha: 0.08),
                   iconColor: primaryColor,
@@ -196,9 +166,7 @@ class _AddPlanForm extends StatelessWidget {
                   value: controller.formatStartTimeDisplay(),
                   valueColor: controller.startTime != null
                       ? onSurfaceColor
-                      : controller.selectedDate != null
-                          ? secondaryColor
-                          : onSurfaceVariant,
+                      : onSurfaceVariant,
                   onTap: controller.isSubmitting
                       ? null
                       : () => controller.selectStartTime(context),
@@ -215,9 +183,7 @@ class _AddPlanForm extends StatelessWidget {
                   value: controller.formatEndTimeDisplay(),
                   valueColor: controller.endTime != null
                       ? onSurfaceColor
-                      : controller.selectedDate != null
-                          ? secondaryColor
-                          : onSurfaceVariant,
+                      : onSurfaceVariant,
                   onTap: controller.isSubmitting
                       ? null
                       : () => controller.selectEndTime(context),

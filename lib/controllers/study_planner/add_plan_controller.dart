@@ -156,28 +156,6 @@ class AddPlanController extends GetxController {
     super.onClose();
   }
 
-  Future<void> selectDate(BuildContext context) async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(Duration(days: 365)),
-    );
-    if (date != null) {
-      selectedDate = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        startTime?.hour ?? 9,
-        startTime?.minute ?? 0,
-      );
-      // Automatically set default times if not set
-      startTime ??= TimeOfDay(hour: 9, minute: 0);
-      endTime ??= TimeOfDay(hour: 10, minute: 0);
-      update();
-    }
-  }
-
   Future<void> selectStartTime(BuildContext context) async {
     final time = await EthiopianTime.showDayNightTimePicker(
       context: context,
@@ -219,26 +197,6 @@ class AddPlanController extends GetxController {
     }
   }
 
-  void clearDate() {
-    selectedDate = null;
-    startTime = null;
-    endTime = null;
-    update();
-  }
-
-  String getDayOfWeek(DateTime date) {
-    final daysOfWeek = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-    return daysOfWeek[date.weekday - 1];
-  }
-
   void toggleDay(int day) {
     if (selectedDays.contains(day)) {
       selectedDays.remove(day);
@@ -250,14 +208,14 @@ class AddPlanController extends GetxController {
 
   String formatStartTimeDisplay() {
     if (startTime == null) {
-      return selectedDate != null ? 'Required' : 'No start time set';
+      return 'No start time set';
     }
     return EthiopianTime.formatTimeOfDay(startTime!);
   }
 
   String formatEndTimeDisplay() {
     if (endTime == null) {
-      return selectedDate != null ? 'Required' : 'No end time set';
+      return 'No end time set';
     }
     return EthiopianTime.formatTimeOfDay(endTime!);
   }
@@ -276,8 +234,8 @@ class AddPlanController extends GetxController {
       return;
     }
 
-    if (selectedDate == null && selectedDays.isEmpty) {
-      AppSnackbar.showError('Error', 'Please select a date or days');
+    if (selectedDays.isEmpty) {
+      AppSnackbar.showError('Error', 'Please select at least one day');
       return;
     }
 

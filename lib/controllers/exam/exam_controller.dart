@@ -1,4 +1,6 @@
 import 'package:get/get.dart';
+import 'package:vector_academy/controllers/leaderboard/leaderboard_controller.dart';
+import 'package:vector_academy/controllers/misc/user_score_controller.dart';
 import 'package:vector_academy/views/exam/exam_detail_page.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/services/services.dart';
@@ -6,6 +8,9 @@ import 'package:vector_academy/utils/storages/storages.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:vector_academy/utils/device/device.dart';
 import 'package:vector_academy/utils/utils.dart';
+
+/// Exam tab body sections: list, competition standings, personal results.
+enum ExamSection { exams, standings, myResults }
 
 class ExamController extends GetxController {
   final ExamService _examService = ExamService();
@@ -35,8 +40,52 @@ class ExamController extends GetxController {
   int _selectedSubjectIndex = 0;
   int get selectedSubjectIndex => _selectedSubjectIndex;
 
+  ExamSection _examSection = ExamSection.exams;
+  ExamSection get examSection => _examSection;
+  int get examSectionIndex => _examSection.index;
+
   String? _error;
   String? get error => _error;
+
+  void selectExamSection(ExamSection section) {
+    if (_examSection == section) return;
+
+    if (section == ExamSection.standings) {
+      _ensureLeaderboardController();
+    } else if (section == ExamSection.myResults) {
+      _ensureUserScoreController();
+    }
+
+    _examSection = section;
+    update();
+  }
+
+  void selectExamSectionIndex(int index) {
+    if (index < 0 || index >= ExamSection.values.length) return;
+    selectExamSection(ExamSection.values[index]);
+  }
+
+  LeaderboardController _ensureLeaderboardController() {
+    final controller = Get.isRegistered<LeaderboardController>()
+        ? Get.find<LeaderboardController>()
+        : Get.put(LeaderboardController());
+
+    if (controller.selectedType != LeaderboardType.competition) {
+      controller.setLeaderboardType(LeaderboardType.competition);
+      controller.loadCompetitions();
+    } else if (controller.competitions.isEmpty &&
+        !controller.isLoadingCompetitions) {
+      controller.loadCompetitions();
+    }
+
+    return controller;
+  }
+
+  UserScoreController _ensureUserScoreController() {
+    return Get.isRegistered<UserScoreController>()
+        ? Get.find<UserScoreController>()
+        : Get.put(UserScoreController());
+  }
 
   @override
   void onInit() async {

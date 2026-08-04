@@ -1,49 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:vector_academy/components/ui/freshman_page_scaffold.dart';
+import 'package:vector_academy/components/ui/themes/light_theme.dart';
 import 'package:vector_academy/controllers/exam/exam_controller.dart';
 import 'package:vector_academy/controllers/misc/downloads_controller.dart';
 import 'package:vector_academy/models/exam.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/utils/utils.dart';
+import 'package:vector_academy/views/exam/exam_my_results_section.dart';
+import 'package:vector_academy/views/exam/exam_standings_section.dart';
 
 class ExamPage extends StatelessWidget {
   const ExamPage({super.key});
 
+  static const _sectionLabels = ['Exams', 'Standings', 'My Results'];
+
   @override
   Widget build(BuildContext context) {
     return GetBuilder<ExamController>(
-      builder: (controller) => Scaffold(
-        backgroundColor: const Color(0xFFF7F4EF),
-        appBar: AppBar(
-          title: Text(
-            'Exams',
-            style: TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-          backgroundColor: const Color(0xFFF7F4EF),
-          elevation: 0,
-          automaticallyImplyLeading: false, // Change this line
-          actions: [
-            IconButton(
-              onPressed: () =>
-                  showSearch(context: context, delegate: ExamSearchDelegate()),
-              icon: Icon(Icons.search, color: Colors.black87),
-            ),
-          ],
-        ),
+      builder: (controller) => FreshmanPageScaffold(
+        title: 'Exam',
+        embeddedInTab: true,
+        actions: controller.examSection == ExamSection.exams
+            ? [
+                IconButton(
+                  onPressed: () => showSearch(
+                    context: context,
+                    delegate: ExamSearchDelegate(),
+                  ),
+                  icon: Icon(Icons.search, color: onSurfaceColor),
+                ),
+              ]
+            : null,
         body: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              // Subject Categories
-              _buildSubjectCategories(context, controller),
-
-              // Exam List - This will now take up most of the available space
-              Expanded(child: _buildExamList(context, controller)),
+              _buildSectionChips(context, controller),
+              Expanded(
+                child: switch (controller.examSection) {
+                  ExamSection.exams =>
+                    _ExamsSection(controller: controller),
+                  ExamSection.standings => const ExamStandingsSection(),
+                  ExamSection.myResults => const ExamMyResultsSection(),
+                },
+              ),
             ],
           ),
         ),
@@ -51,89 +52,65 @@ class ExamPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPromotionalBanner(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 12,
-      ), // Reduced margins
-      padding: EdgeInsets.all(16), // Reduced padding
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF0F766E), Color(0xFF14B8A6)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
+  Widget _buildSectionChips(BuildContext context, ExamController controller) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Test Your Knowledge",
-                  style: TextStyle(
-                    fontSize: 16, // Smaller font
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(height: 6), // Reduced spacing
-                Text(
-                  "Practice with our comprehensive question bank",
-                  style: TextStyle(
-                    fontSize: 13, // Smaller font
-                    color: Colors.white.withValues(alpha: 0.9),
-                  ),
-                ),
-                SizedBox(height: 12), // Reduced spacing
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // TODO: Implement take exams functionality
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFF7F4EF),
-                      foregroundColor: Color(0xFF0F766E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+        children: List.generate(_sectionLabels.length, (index) {
+          final selected = controller.examSectionIndex == index;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: index < 2 ? 8 : 0),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => controller.selectExamSectionIndex(index),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? primaryColor.withValues(alpha: 0.12)
+                          : surfaceColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: selected ? primaryColor : borderColor,
                       ),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ), // Smaller button
                     ),
                     child: Text(
-                      "Start Practice",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                      _sectionLabels[index],
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: selected ? primaryColor : onSurfaceVariant,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500,
                       ),
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-          SizedBox(width: 12), // Reduced spacing
-          Container(
-            width: 60, // Smaller icon container
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: Icon(
-              Icons.emoji_events,
-              size: 30, // Smaller icon
-              color: Colors.white,
-            ),
-          ),
-        ],
+          );
+        }),
       ),
+    );
+  }
+}
+
+class _ExamsSection extends StatelessWidget {
+  const _ExamsSection({required this.controller});
+
+  final ExamController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSubjectCategories(context, controller),
+        Expanded(child: _buildExamList(context, controller)),
+      ],
     );
   }
 
@@ -143,19 +120,19 @@ class ExamPage extends StatelessWidget {
   ) {
     return Container(
       height: 50,
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        physics: BouncingScrollPhysics(),
+        physics: const BouncingScrollPhysics(),
         itemCount: controller.subjects.length,
         itemBuilder: (context, index) {
           final subject = controller.subjects[index];
           final isSelected = controller.selectedSubjectIndex == index;
 
           return AnimatedContainer(
-            duration: Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 200),
             curve: Curves.easeInOut,
-            margin: EdgeInsets.only(right: 12),
+            margin: const EdgeInsets.only(right: 12),
             child: GestureDetector(
               onTap: () {
                 controller.selectSubject(index);
@@ -164,9 +141,10 @@ class ExamPage extends StatelessWidget {
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: AnimatedContainer(
-                  duration: Duration(milliseconds: 200),
+                  duration: const Duration(milliseconds: 200),
                   curve: Curves.easeInOut,
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   decoration: BoxDecoration(
                     gradient: isSelected
                         ? LinearGradient(
