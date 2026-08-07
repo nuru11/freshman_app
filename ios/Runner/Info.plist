@@ -40,11 +40,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>We use the camera so you can take photos for your profile, payment receipts, and documents.</string>
+	<string>We use the camera so you can take photos for your profile and documents.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>We may save processed images to your photo library when needed.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>We use your photo library so you can choose photos for your profile, payment receipts, and documents.</string>
+	<string>We use your photo library so you can choose photos for your profile and documents.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

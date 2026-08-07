@@ -67,7 +67,7 @@ class PrivacyPolicyDialog extends StatelessWidget {
                           '• Device Information: Device ID, brand, model, manufacturer, operating system\n'
                           '• Profile Data: Profile pictures (if you choose to upload)\n'
                           '• Usage Data: Study plans, exam progress, downloaded content\n'
-                          '• Payment Information: Payment receipts and transaction records (if applicable)',
+                          '• Optional verification images or records you choose to submit for account access',
                     ),
                     const SizedBox(height: 16),
                     _buildSection(
@@ -76,7 +76,7 @@ class PrivacyPolicyDialog extends StatelessWidget {
                       'We use your information to:\n\n'
                           '• Provide and maintain ${FlavorConfig.appTitle} services\n'
                           '• Authenticate your account and prevent fraud\n'
-                          '• Process your subscription payments\n'
+                          '• Verify payment proofs you submit for account access\n'
                           '• Send study plan reminders and notifications\n'
                           '• Personalize your learning experience\n'
                           '• Store your downloaded study materials locally\n'
@@ -88,7 +88,7 @@ class PrivacyPolicyDialog extends StatelessWidget {
                       '3. Information Sharing and Data Storage',
                       'How We Share Data:\n\n'
                           '• We do not sell your personal information\n'
-                          '• We may share data with trusted service providers (for example: cloud hosting, payment processing, analytics, crash reporting, and customer support) only to operate and improve the app\n'
+                          '• We may share data with trusted service providers (for example: cloud hosting, analytics, crash reporting, customer support, and payment verification when applicable) only to operate and improve the app\n'
                           '• These providers process data under contractual confidentiality and security obligations\n'
                           '• We may disclose information when required by law, legal process, or to protect users and platform security\n'
                           '• Data in transit is protected using HTTPS/TLS\n'

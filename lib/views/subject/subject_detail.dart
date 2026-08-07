@@ -16,7 +16,7 @@ class SubjectDetail extends StatelessWidget {
         final count = controller.chapters.length;
         final subtitle = controller.isLoading
             ? 'Loading units…'
-            : '$count ${count == 1 ? 'chapter' : 'chapters'} · first unit free to preview';
+            : '$count ${count == 1 ? 'chapter' : 'chapters'}';
 
         return FreshmanPageScaffold(
           title: controller.subjectName.isEmpty
@@ -73,11 +73,9 @@ class _ChapterRow extends StatelessWidget {
     final titleColor = locked ? onSurfaceVariant : onSurfaceColor;
     final subtitle = locked
         ? 'Subscribe to unlock'
-        : isPreview
-            ? 'Preview free'
-            : (chapter.description?.trim().isNotEmpty == true
-                ? chapter.description!
-                : 'Open unit');
+        : (chapter.description?.trim().isNotEmpty == true
+            ? chapter.description!
+            : 'Open unit');
 
     return FreshmanSurfaceCard(
       onTap: onTap,

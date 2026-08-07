@@ -263,7 +263,7 @@ class AgentStatusPage extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Earn coins when users you refer purchase packages',
+                            'Earn coins when users join using your referral code',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.blue[900],

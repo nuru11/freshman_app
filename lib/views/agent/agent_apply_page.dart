@@ -111,7 +111,7 @@ class AgentApplyPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Become an agent and earn coins when users you refer purchase packages. Coins can be redeemed for rewards.',
+                    'Become an agent and earn coins when users join using your referral code. Coins can be redeemed for rewards.',
                     style: TextStyle(fontSize: 14),
                   ),
                 ],
