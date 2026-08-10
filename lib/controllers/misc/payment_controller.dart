@@ -129,11 +129,53 @@ class PaymentController extends GetxController {
   Future<DeviceInfo> _ensureDeviceRegistered() async {
     final phone = _user?.phoneNumber ?? '';
     try {
+      // registerDevice remints once on ownership conflict.
       await DeviceService().registerDevice(phone);
     } catch (e) {
       logger.w('Device re-registration before payment failed: $e');
     }
     return UserDevice.getDeviceInfo(phone);
+  }
+
+  Future<void> _uploadReceiptWithDeviceConflictRetry({
+    required File receiptFile,
+    required int packageId,
+    required double paymentAmount,
+    required String? referralCode,
+    required DeviceInfo device,
+  }) async {
+    try {
+      await _paymentService.uploadReceipt(
+        file: receiptFile,
+        package: packageId,
+        paymentMethod: selectedPaymentMethod!.id,
+        amount: paymentAmount,
+        device: device.id,
+        referralCode: referralCode,
+      );
+    } catch (e) {
+      if (!DeviceService.isOwnedByAnotherUser(e)) rethrow;
+
+      final phone = _user?.phoneNumber ?? '';
+      logger.w(
+        'Receipt upload device conflict; reminting and retrying once: $e',
+      );
+      await UserDevice.remintDeviceId(phone);
+      try {
+        await DeviceService().registerDevice(phone);
+      } catch (regError) {
+        logger.w('Device register after remint failed: $regError');
+      }
+      final retryDevice = await UserDevice.getDeviceInfo(phone);
+      await _paymentService.uploadReceipt(
+        file: receiptFile,
+        package: packageId,
+        paymentMethod: selectedPaymentMethod!.id,
+        amount: paymentAmount,
+        device: retryDevice.id,
+        referralCode: referralCode,
+      );
+    }
   }
 
   Future<void> loadUserPayments() async {
@@ -263,13 +305,12 @@ class PaymentController extends GetxController {
         return false;
       }
       final receiptFile = selectedReceiptImage!;
-      await _paymentService.uploadReceipt(
-        file: receiptFile,
-        package: packageId,
-        paymentMethod: selectedPaymentMethod!.id,
-        amount: paymentAmount,
-        device: device.id,
+      await _uploadReceiptWithDeviceConflictRetry(
+        receiptFile: receiptFile,
+        packageId: packageId,
+        paymentAmount: paymentAmount,
         referralCode: referralCode,
+        device: device,
       );
 
       selectedPaymentMethod = null;
