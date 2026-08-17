@@ -44,6 +44,17 @@ class _ExamDetailPageState extends State<ExamDetailPage> {
   }
 
   bool get _isDownloaded => _exam.isDownloaded && _exam.questions.isNotEmpty;
+
+  bool get _isExamEffectivelyLocked {
+    if (_examController != null) {
+      return _examController!.isExamLocked(_exam);
+    }
+    if (_downloadsController != null) {
+      return _downloadsController!.isExamLocked(_exam);
+    }
+    return _exam.isLocked;
+  }
+
   bool get _allowPractice {
     final modeType = (_exam.modeType).toLowerCase();
     return modeType == 'both' || modeType == 'practice';
@@ -105,7 +116,7 @@ class _ExamDetailPageState extends State<ExamDetailPage> {
     QuestionMode? presetMode,
     bool resume = false,
   }) async {
-    if (_exam.isLocked) {
+    if (_isExamEffectivelyLocked) {
       AppSnackbar.showInfo(
         'Locked Exam',
         'Please unlock this exam before starting.',
@@ -436,7 +447,7 @@ class _ExamDetailPageState extends State<ExamDetailPage> {
                     label: 'Year ${_exam.year}',
                     color: theme.colorScheme.primary,
                   ),
-                if (_exam.isLocked)
+                if (_isExamEffectivelyLocked)
                   _StatusChip(
                     icon: Icons.lock,
                     label: 'Locked',
@@ -480,7 +491,7 @@ class _ExamDetailPageState extends State<ExamDetailPage> {
               ),
             ),
             SizedBox(height: 16),
-            if (_exam.isLocked)
+            if (_isExamEffectivelyLocked)
               _DisabledBanner(
                 message:
                     'This exam is currently locked. Please unlock it to continue.',

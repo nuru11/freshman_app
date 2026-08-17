@@ -61,33 +61,39 @@ class ChapterDetailController extends GetxController {
       hasFullAccessOverrideForPhone(_user?.phoneNumber);
 
   bool isVideoLocked(Video video) {
-    if (_hasFullAccessOverride || _isPreviewChapterAccess) {
-      return false;
-    }
-    if (hasDownloadedVideoFile(video)) {
-      return false;
-    }
-    return video.isLocked;
+    // App Store review: treat content as free (uncomment block to restore)
+    return false;
+    // if (_hasFullAccessOverride || _isPreviewChapterAccess) {
+    //   return false;
+    // }
+    // if (hasDownloadedVideoFile(video)) {
+    //   return false;
+    // }
+    // return video.isLocked;
   }
 
   bool isQuizLocked(Exam quiz) {
-    if (_hasFullAccessOverride || _isPreviewChapterAccess) {
-      return false;
-    }
-    if (hasDownloadedExamContent(quiz)) {
-      return false;
-    }
-    return quiz.isLocked;
+    // App Store review: treat content as free (uncomment block to restore)
+    return false;
+    // if (_hasFullAccessOverride || _isPreviewChapterAccess) {
+    //   return false;
+    // }
+    // if (hasDownloadedExamContent(quiz)) {
+    //   return false;
+    // }
+    // return quiz.isLocked;
   }
 
   bool isNoteLocked(Note note) {
-    if (_hasFullAccessOverride || _isPreviewChapterAccess) {
-      return false;
-    }
-    if (hasDownloadedNoteFile(note)) {
-      return false;
-    }
-    return note.isLocked;
+    // App Store review: treat content as free (uncomment block to restore)
+    return false;
+    // if (_hasFullAccessOverride || _isPreviewChapterAccess) {
+    //   return false;
+    // }
+    // if (hasDownloadedNoteFile(note)) {
+    //   return false;
+    // }
+    // return note.isLocked;
   }
 
   void _showLockedContentMessage() {
@@ -105,16 +111,17 @@ class ChapterDetailController extends GetxController {
 
     final canAccessChapter = await _canAccessCurrentChapter();
     if (!canAccessChapter) {
-      Get.offNamed(
-        VIEWS.payments.path,
-        arguments: {'subjectId': subjectId},
-      );
-      AppSnackbar.showInfo(
-        'Subscription Required',
-        'Subscribe to unlock all chapters for this subject.',
-      );
-      super.onInit();
-      return;
+      // App Store: hide payment redirect (uncomment to restore)
+      // Get.offNamed(
+      //   VIEWS.payments.path,
+      //   arguments: {'subjectId': subjectId},
+      // );
+      // AppSnackbar.showInfo(
+      //   'Subscription Required',
+      //   'Subscribe to unlock all chapters for this subject.',
+      // );
+      // super.onInit();
+      // return;
     }
 
     _registerDownloadCallbacks();
@@ -176,6 +183,7 @@ class ChapterDetailController extends GetxController {
       final v = _videos.firstWhereOrNull((v) => v.id == videoId);
       if (v != null) {
         v.isDownloading = true;
+        v.isPaused = false;
         v.downloadProgress = progress;
         update();
       }
@@ -186,6 +194,7 @@ class ChapterDetailController extends GetxController {
         v.filePath = filePath;
         v.isDownloaded = true;
         v.isDownloading = false;
+        v.isPaused = false;
         v.downloadProgress = 1.0;
         update();
       }
@@ -194,7 +203,17 @@ class ChapterDetailController extends GetxController {
       final v = _videos.firstWhereOrNull((v) => v.id == videoId);
       if (v != null) {
         v.isDownloading = false;
+        v.isPaused = false;
         v.downloadProgress = 0.0;
+        update();
+      }
+    };
+    _downloadsController.onVideoPaused = (videoId, progress) {
+      final v = _videos.firstWhereOrNull((v) => v.id == videoId);
+      if (v != null) {
+        v.isDownloading = false;
+        v.isPaused = true;
+        v.downloadProgress = progress;
         update();
       }
     };
@@ -239,6 +258,7 @@ class ChapterDetailController extends GetxController {
     _downloadsController.onVideoProgress = null;
     _downloadsController.onVideoCompleted = null;
     _downloadsController.onVideoError = null;
+    _downloadsController.onVideoPaused = null;
     _downloadsController.onNoteProgress = null;
     _downloadsController.onNoteCompleted = null;
     _downloadsController.onNoteError = null;
@@ -250,7 +270,15 @@ class ChapterDetailController extends GetxController {
       final progress = _downloadsController.activeVideoDownloads[v.id];
       if (progress != null) {
         v.isDownloading = true;
+        v.isPaused = false;
         v.downloadProgress = progress;
+      } else {
+        final paused = _downloadsController.pausedVideoDownloads[v.id];
+        if (paused != null) {
+          v.isDownloading = false;
+          v.isPaused = true;
+          v.downloadProgress = paused;
+        }
       }
     }
     for (final n in _notes) {
@@ -385,10 +413,12 @@ class ChapterDetailController extends GetxController {
         }
       }
 
-      _isSubjectLocked = (subject?.isLocked ?? true) && !_hasFullAccessOverride;
+      // _isSubjectLocked = (subject?.isLocked ?? true) && !_hasFullAccessOverride;
+      _isSubjectLocked = false; // App Store review: treat content as free
       _chapter = subject?.chapters.firstWhereOrNull((ch) => ch.id == chapterId);
-      _isPreviewChapterAccess = _hasFullAccessOverride ||
-          (_isSubjectLocked && ((_chapter?.chapterNumber ?? 0) == 1));
+      // _isPreviewChapterAccess = _hasFullAccessOverride ||
+      //     (_isSubjectLocked && ((_chapter?.chapterNumber ?? 0) == 1));
+      _isPreviewChapterAccess = true; // App Store review: treat content as free
 
       if (_chapter != null) {
         _chapterTitle = _chapter!.name;
@@ -470,54 +500,15 @@ class ChapterDetailController extends GetxController {
   void openPDF(int noteId) {
     try {
       final note = _notes.firstWhereOrNull((n) => n.id == noteId);
-      if (note != null) {
-        if (isNoteLocked(note)) {
-          _showLockedContentMessage();
-          return;
-        }
-        String pdfUrl;
-
-        // If note is downloaded, use local file path
-        if (note.isDownloaded &&
-            note.filePath != null &&
-            note.filePath!.isNotEmpty) {
-          final file = File(note.filePath!);
-          if (file.existsSync()) {
-            pdfUrl = note.filePath!;
-            logger.d('Using local file path: $pdfUrl');
-          } else {
-            // File doesn't exist anymore, reset download status
-            note.isDownloaded = false;
-            note.filePath = null;
-            update();
-            AppSnackbar.showWarning(
-              'File Not Found',
-              'The downloaded file could not be found. Please download again.',
-            );
-            return;
-          }
-        } else {
-          // For remote files, we need to get the actual URL from the API
-          // The note.content field just contains "pdf", not the URL
-          logger.e(
-            'Remote PDF access not properly implemented. Note content: ${note.content}',
-          );
-          AppSnackbar.showWarning(
-            'Error',
-            'Remote PDF viewing is not implemented. Please download the PDF first.',
-          );
-          return;
-        }
-
-        logger.d(
-          'Opening PDF with URL: $pdfUrl, Title: ${note.title}, ID: $noteId',
-        );
-        Get.to(
-          PDFReaderScreen(pdfUrl: pdfUrl, pdfTitle: note.title, pdfId: noteId),
-        );
-      } else {
+      if (note == null) {
         AppSnackbar.showError('Error', 'PDF not found');
+        return;
       }
+      if (isNoteLocked(note)) {
+        _showLockedContentMessage();
+        return;
+      }
+      _downloadsController.openNote(note);
     } catch (e) {
       logger.e('Error opening PDF: $e');
       AppSnackbar.showError(
@@ -537,22 +528,7 @@ class ChapterDetailController extends GetxController {
       _showLockedContentMessage();
       return;
     }
-
-    // If already downloaded open it directly
-    if (note.isDownloaded &&
-        note.filePath != null &&
-        note.filePath!.isNotEmpty) {
-      if (note.content.toLowerCase() == 'pdf') {
-        openPDF(noteId);
-      } else {
-        AppSnackbar.showInfo('Info', 'Note is already downloaded and available offline');
-      }
-      return;
-    }
-
-    // Delegate to the permanent DownloadsController so the download continues
-    // even after this page is popped.
-    await _downloadsController.downloadNote(note);
+    await _downloadsController.openNote(note);
   }
 
   void startQuiz(Exam quiz) {
@@ -657,4 +633,16 @@ class ChapterDetailController extends GetxController {
     await _downloadsController.downloadVideo(video);
   }
 
+  void pauseVideoDownload(int videoId) {
+    _downloadsController.pauseVideoDownload(videoId);
+  }
+
+  void resumeVideoDownload(int videoId) {
+    final video = _videos.firstWhereOrNull((v) => v.id == videoId);
+    if (video == null) {
+      AppSnackbar.showError('Error', 'Video not found');
+      return;
+    }
+    _downloadsController.resumeVideoDownload(video);
+  }
 }

@@ -217,12 +217,14 @@ class ExamController extends GetxController {
   }
 
   bool isExamLocked(Exam exam) {
-    if (hasFullAccessOverride) {
-      return false;
-    }
-    if (hasDownloadedExamContent(exam)) {
-      return false;
-    }
-    return exam.isLocked;
+    // App Store review: treat content as free (uncomment block to restore)
+    return false;
+    // if (hasFullAccessOverride) {
+    //   return false;
+    // }
+    // if (hasDownloadedExamContent(exam)) {
+    //   return false;
+    // }
+    // return exam.isLocked;
   }
 }

@@ -1,14 +1,33 @@
+import 'package:dio/dio.dart';
 import 'package:vector_academy/services/api/api.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/services/api/file_download_util.dart';
-import 'package:flutter_file_downloader/flutter_file_downloader.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:vector_academy/utils/utils.dart';
 import 'dart:io';
 
 class VideoApiService {
   final ApiClient apiClient = ApiClient();
+
+  static Future<Directory> videosDirectory() async {
+    final Directory appDocDir = await getApplicationDocumentsDirectory();
+    final Directory videosDir = Directory('${appDocDir.path}/videos');
+    if (!await videosDir.exists()) {
+      await videosDir.create(recursive: true);
+    }
+    return videosDir;
+  }
+
+  static Future<File> partFileFor(int videoId) async {
+    final dir = await videosDirectory();
+    return File('${dir.path}/video_$videoId.mp4.part');
+  }
+
+  static Future<File> finalFileFor(int videoId) async {
+    final dir = await videosDirectory();
+    return File('${dir.path}/video_$videoId.mp4');
+  }
 
   Future<List<Video>> getVideos(
     int chapterId, {
@@ -56,6 +75,8 @@ class VideoApiService {
     required Function(String?, double) onData,
     required Function(String) onDone,
     required Function(String) onError,
+    CancelToken? cancelToken,
+    int startByte = 0,
   }) async {
     try {
       final response = await apiClient.get(
@@ -77,54 +98,40 @@ class VideoApiService {
 
       final String url = rawFile.toString();
 
-      // Get app documents directory for storing videos
-      final Directory appDocDir = await getApplicationDocumentsDirectory();
-      final String videosDir = '${appDocDir.path}/videos';
-
-      // Create videos directory if it doesn't exist
-      final Directory videosDirObj = Directory(videosDir);
-      if (!await videosDirObj.exists()) {
-        await videosDirObj.create(recursive: true);
-      }
-
-      // Generate filename from URL or use video ID
+      final Directory videosDir = await videosDirectory();
       final String fileName = 'video_$videoId.mp4';
-      final String fullPath = '$videosDir/$fileName';
+      final String partPath = '${videosDir.path}/$fileName.part';
+      final String fullPath = '${videosDir.path}/$fileName';
 
       final resolvedUrl = FileDownloadUtil.resolveDownloadUrl(url);
 
-      logger.d('Downloading video to: $fullPath');
+      logger.d('Downloading video to: $partPath');
       logger.d('Downloading video from: $resolvedUrl');
 
-      // flutter_file_downloader is Android-only; use Dio everywhere else (iOS, desktop, …).
-      if (!Platform.isAndroid) {
-        final path = await FileDownloadUtil.downloadToFile(
-          dio: apiClient.dio,
-          absoluteUrl: resolvedUrl,
-          savePath: fullPath,
-          progressName: fileName,
-          onProgress: onData,
-        );
-        logger.d('Video downloaded to: $path');
-        onDone(path);
+      final path = await FileDownloadUtil.downloadToFile(
+        dio: apiClient.dio,
+        absoluteUrl: resolvedUrl,
+        savePath: partPath,
+        progressName: fileName,
+        onProgress: onData,
+        cancelToken: cancelToken,
+        startByte: startByte,
+      );
+
+      final part = File(path);
+      final dest = File(fullPath);
+      if (await dest.exists()) {
+        await dest.delete();
+      }
+      await part.rename(fullPath);
+      logger.d('Video downloaded to: $fullPath');
+      onDone(fullPath);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) {
         return;
       }
-
-      final File? file = await FileDownloader.downloadFile(
-        url: resolvedUrl,
-        name: fileName,
-        subPath: 'videos',
-        downloadDestination: DownloadDestinations.appFiles,
-        onProgress: onData,
-        onDownloadError: (String error) {
-          logger.e('Download error: $error');
-          onError(error);
-        },
-      );
-      if (file != null) {
-        logger.d('Video downloaded to: ${file.path}');
-        onDone(file.path);
-      }
+      logger.e('Error in downloadVideo: $e');
+      onError(e.toString());
     } catch (e) {
       logger.e('Error in downloadVideo: $e');
       onError(e.toString());

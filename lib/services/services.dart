@@ -10,6 +10,7 @@ export 'auth.dart';
 export 'core.dart';
 export 'api/news.dart';
 export 'api/notes.dart';
+export 'note_file_cache.dart';
 export 'api/video.dart';
 export "api/faq.dart";
 export 'api/notification.dart';

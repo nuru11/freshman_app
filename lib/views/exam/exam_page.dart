@@ -321,16 +321,17 @@ Widget _buildExamCard(
   Exam exam,
   ExamController controller,
 ) {
+  final locked = controller.isExamLocked(exam);
   return GestureDetector(
     behavior: HitTestBehavior.opaque,
     onTap: () => controller.navigateToExamDetail(exam.id),
     child: Container(
       margin: EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: exam.isLocked ? Colors.grey[50] : Colors.white,
+        color: locked ? Colors.grey[50] : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: exam.isLocked
+          color: locked
               ? Colors.grey.withValues(alpha: 0.3)
               : Colors.grey.withValues(alpha: 0.2),
           width: 1,
@@ -351,7 +352,7 @@ Widget _buildExamCard(
               width: 45,
               height: 45,
               decoration: BoxDecoration(
-                color: exam.isLocked ? Colors.grey[300] : Colors.blue[100],
+                color: locked ? Colors.grey[300] : Colors.blue[100],
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Stack(
@@ -359,13 +360,13 @@ Widget _buildExamCard(
                   Center(
                     child: Icon(
                       Icons.quiz,
-                      color: exam.isLocked
+                      color: locked
                           ? Colors.grey[500]
                           : Colors.blue[600],
                       size: 24,
                     ),
                   ),
-                  if (exam.isLocked)
+                  if (locked)
                     Positioned(
                       top: 2,
                       right: 2,
@@ -392,7 +393,7 @@ Widget _buildExamCard(
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: exam.isLocked
+                      color: locked
                           ? Colors.grey[600]
                           : Colors.blue[700],
                     ),
@@ -491,7 +492,7 @@ Widget _buildExamCard(
 }
 
 Widget buildExamActionButton(Exam exam, ExamController controller) {
-  if (exam.isLocked) {
+  if (controller.isExamLocked(exam)) {
     // Locked exam
     return ElevatedButton(
       onPressed: null,

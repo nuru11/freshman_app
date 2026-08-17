@@ -49,10 +49,15 @@ dependencies:
   android_id: ^0.4.0
   crypto: ^3.0.7
   video_player: ^2.10.1
+  fvp: ^0.38.0
   flutter_file_downloader: ^2.1.0
   flutter_pdfview: ^1.3.2
   path_provider: ^2.1.4
   permission_handler: ^12.0.1
+  flutter_tts: ^4.2.3
+  syncfusion_flutter_pdf: ^30.1.38
+  encrypt: ^5.0.3
+  screen_protector: ^1.4.3
   url_launcher: ^6.3.2
   package_info_plus: ^9.0.0
   cached_network_image: ^3.4.1

@@ -19,6 +19,7 @@ Video _$VideoFromJson(Map<String, dynamic> json) => Video(
   isWatched: json['is_watched'] as bool? ?? false,
   description: json['description'] as String?,
   thumbnail: json['thumbnail'] as String?,
+  size: (json['size'] as num?)?.toInt() ?? 0,
   isDownloaded: json['is_downloaded'] as bool? ?? false,
   filePath: json['file_path'] as String?,
 );
@@ -37,5 +38,6 @@ Map<String, dynamic> _$VideoToJson(Video instance) => <String, dynamic>{
   'is_watched': instance.isWatched,
   'is_downloaded': instance.isDownloaded,
   'thumbnail': instance.thumbnail,
+  'size': instance.size,
   'file_path': instance.filePath,
 };

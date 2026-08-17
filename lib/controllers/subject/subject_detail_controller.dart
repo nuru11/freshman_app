@@ -24,6 +24,7 @@ class SubjectDetailController extends GetxController {
   int subjectId = 0;
   // ignore: unused_field
   User? _user;
+  // ignore: unused_element
   bool get _hasFullAccessOverride =>
       hasFullAccessOverrideForPhone(_user?.phoneNumber);
   late StreamSubscription<InternetStatus> _internetStatusSubscription;
@@ -52,7 +53,8 @@ class SubjectDetailController extends GetxController {
       )).firstWhere((element) => element.id == subjectId);
       logger.i('subject: $_subject ${_subject?.isLocked}');
 
-      isLocked = (_subject?.isLocked ?? true) && !_hasFullAccessOverride;
+      // isLocked = (_subject?.isLocked ?? true) && !_hasFullAccessOverride;
+      isLocked = false; // App Store review: treat content as free
 
       _subjectName = _subject?.name ?? '';
       _chapters = _subject?.chapters ?? [];
@@ -77,14 +79,17 @@ class SubjectDetailController extends GetxController {
 
   void handleChapterTap(Chapter chapter) {
     if (isChapterLocked(chapter)) {
-      Get.toNamed(
-        VIEWS.payments.path,
-        arguments: {'subjectId': subjectId, 'subjectName': _subjectName},
-      );
-      AppSnackbar.showInfo(
-        'Subscription Required',
-        'Pay once to unlock all chapters in $_subjectName.',
-      );
+      // App Store: hide payment redirect (uncomment to restore)
+      // Get.toNamed(
+      //   VIEWS.payments.path,
+      //   arguments: {'subjectId': subjectId, 'subjectName': _subjectName},
+      // );
+      // AppSnackbar.showInfo(
+      //   'Subscription Required',
+      //   'Pay once to unlock all chapters in $_subjectName.',
+      // );
+      // return;
+      openChapter(chapter.id);
       return;
     }
     openChapter(chapter.id);

@@ -25,12 +25,16 @@ class Video {
   bool isDownloaded;
 
   final String? thumbnail;
+  final int? size;
   @JsonKey(name: 'file_path')
   String? filePath;
 
   // Add download progress tracking properties
   @JsonKey(includeFromJson: false, includeToJson: false)
   bool isDownloading;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  bool isPaused;
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   double downloadProgress;
@@ -48,9 +52,11 @@ class Video {
     this.isWatched = false,
     this.description,
     this.thumbnail,
+    this.size = 0,
     this.isDownloaded = false,
     this.filePath,
     this.isDownloading = false,
+    this.isPaused = false,
     this.downloadProgress = 0.0,
   });
 

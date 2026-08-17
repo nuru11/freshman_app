@@ -5,7 +5,7 @@ import 'package:vector_academy/services/api/api.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/services/api/file_download_util.dart';
-import 'package:flutter_file_downloader/flutter_file_downloader.dart';
+import 'package:vector_academy/services/note_file_cache.dart';
 
 class NoteService {
   final ApiClient apiClient = ApiClient();
@@ -34,6 +34,8 @@ class NoteService {
     return (response.data as List).map((e) => Note.fromJson(e)).toList();
   }
 
+  /// Fetches a note PDF into the encrypted private cache. The file is never
+  /// written to public Downloads storage.
   Future<void> downloadNote(
     int noteId, {
     required String deviceId,
@@ -41,6 +43,7 @@ class NoteService {
     required Function(String) onDone,
     required Function(String) onError,
   }) async {
+    String? tmpPath;
     try {
       final response = await apiClient.get(
         '/app/notes/$noteId?device=$deviceId',
@@ -58,50 +61,37 @@ class NoteService {
       final String url = rawFile.toString();
       final resolvedUrl = FileDownloadUtil.resolveDownloadUrl(url);
 
-      final appDocDir = await getApplicationDocumentsDirectory();
-      final notesDir = '${appDocDir.path}/notes';
-      final notesDirObj = Directory(notesDir);
-      if (!await notesDirObj.exists()) {
-        await notesDirObj.create(recursive: true);
+      final supportDir = await getApplicationSupportDirectory();
+      final tmpDir = Directory('${supportDir.path}/note_cache');
+      if (!await tmpDir.exists()) {
+        await tmpDir.create(recursive: true);
       }
+      tmpPath = '${tmpDir.path}/.tmp_note_$noteId.pdf';
 
-      String fileName = 'note_$noteId.pdf';
-      final segments = Uri.parse(resolvedUrl).pathSegments;
-      if (segments.isNotEmpty) {
-        final last = segments.last;
-        if (last.contains('.')) {
-          fileName = last;
-        }
-      }
-
-      final fullPath = '$notesDir/$fileName';
-      final progressName = fileName;
-
-      if (!Platform.isAndroid) {
-        final path = await FileDownloadUtil.downloadToFile(
-          dio: apiClient.dio,
-          absoluteUrl: resolvedUrl,
-          savePath: fullPath,
-          progressName: progressName,
-          onProgress: onData,
-        );
-        onDone(path);
-        return;
-      }
-
-      final File? file = await FileDownloader.downloadFile(
-        url: resolvedUrl,
-        name: fileName,
-        subPath: 'notes',
-        downloadDestination: DownloadDestinations.appFiles,
+      await FileDownloadUtil.downloadToFile(
+        dio: apiClient.dio,
+        absoluteUrl: resolvedUrl,
+        savePath: tmpPath,
+        progressName: 'note_$noteId',
         onProgress: onData,
-        onDownloadError: onError,
       );
-      if (file != null) {
-        onDone(file.path);
-      }
+
+      final cachedPath = await NoteFileCache.instance.storeFromPlaintext(
+        noteId,
+        tmpPath,
+      );
+      onDone(cachedPath);
     } catch (e) {
       onError(e.toString());
+    } finally {
+      if (tmpPath != null) {
+        try {
+          final tmp = File(tmpPath);
+          if (await tmp.exists()) {
+            await tmp.delete();
+          }
+        } catch (_) {}
+      }
     }
   }
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/controllers/subject/chapter_detail_controller.dart';
 import 'package:vector_academy/models/models.dart';
-import 'package:vector_academy/utils/utils.dart';
 
 class NotesTab extends StatelessWidget {
   const NotesTab({super.key});
@@ -44,45 +43,48 @@ class NotesTab extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  theme.colorScheme.primary.withValues(alpha: 0.1),
-                  theme.colorScheme.secondary.withValues(alpha: 0.05),
-                ],
+      child: Semantics(
+        label: 'No notes available. Notes and materials for this chapter will appear here.',
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primary.withValues(alpha: 0.1),
+                    theme.colorScheme.secondary.withValues(alpha: 0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(30),
               ),
-              borderRadius: BorderRadius.circular(30),
+              child: Icon(
+                Icons.description_outlined,
+                size: 60,
+                color: theme.colorScheme.primary.withValues(alpha: 0.6),
+              ),
             ),
-            child: Icon(
-              Icons.description_outlined,
-              size: 60,
-              color: theme.colorScheme.primary.withValues(alpha: 0.6),
+            SizedBox(height: 24),
+            Text(
+              'No Notes Available',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          SizedBox(height: 24),
-          Text(
-            'No Notes Available',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
+            SizedBox(height: 8),
+            Text(
+              'Notes and materials for this chapter will appear here',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Notes and materials for this chapter will appear here',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -98,8 +100,24 @@ class NotesTab extends StatelessWidget {
     final bool isDownloaded = note.isDownloaded;
     final bool isDownloading = note.isDownloading;
     final double downloadProgress = note.downloadProgress;
+    final statusLabel = isLocked
+        ? 'locked'
+        : isDownloading
+        ? 'opening, ${(downloadProgress * 100).toInt()} percent'
+        : isDownloaded
+        ? 'saved in app'
+        : 'available in app';
+    final semanticLabel =
+        'PDF note, ${note.title}, $statusLabel. Double tap to open in the app.';
 
-    return Container(
+    return Semantics(
+      button: !isLocked && !isDownloading,
+      enabled: !isLocked && !isDownloading,
+      label: semanticLabel,
+      onTap: (isDownloading || isLocked)
+          ? null
+          : () => controller.openPDF(note.id),
+      child: Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
@@ -120,7 +138,7 @@ class NotesTab extends StatelessWidget {
         child: InkWell(
           onTap: (isDownloading || isLocked)
               ? null
-              : () => _handleNoteTap(note, controller),
+              : () => controller.openPDF(note.id),
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: EdgeInsets.all(16),
@@ -267,7 +285,7 @@ class NotesTab extends StatelessWidget {
                                       ),
                                       SizedBox(width: 4),
                                       Text(
-                                        'Downloaded',
+                                        'Saved in app',
                                         style: theme.textTheme.labelSmall
                                             ?.copyWith(
                                               color:
@@ -369,17 +387,23 @@ class NotesTab extends StatelessWidget {
                           width: 1,
                         ),
                       ),
+                      child: ExcludeSemantics(
                       child: IconButton(
-                        onPressed: isDownloading
+                        tooltip: isLocked
+                            ? 'Note locked'
+                            : isDownloading
+                            ? 'Opening note'
+                            : 'Open note in app',
+                        onPressed: isDownloading || isLocked
                             ? null
-                            : isLocked
-                            ? null
-                            : () => _handleNoteAction(note, controller),
+                            : () => controller.openPDF(note.id),
                         icon: Stack(
                           alignment: Alignment.center,
                           children: [
                             Icon(
-                              _getActionIcon(note),
+                              isLocked
+                                  ? Icons.lock_rounded
+                                  : Icons.menu_book_outlined,
                               color: isDownloading
                                   ? theme.colorScheme.primary.withValues(
                                       alpha: 0.5,
@@ -387,12 +411,15 @@ class NotesTab extends StatelessWidget {
                                   : isDownloaded
                                   ? theme.colorScheme.secondary
                                   : theme.colorScheme.primary,
-                              size: 18,
+                              size: 22,
+                              semanticLabel: isLocked
+                                  ? 'Locked'
+                                  : 'Open in app',
                             ),
                             if (isDownloading)
                               SizedBox(
-                                width: 18,
-                                height: 18,
+                                width: 22,
+                                height: 22,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                   value: downloadProgress,
@@ -401,7 +428,8 @@ class NotesTab extends StatelessWidget {
                               ),
                           ],
                         ),
-                        padding: EdgeInsets.all(8),
+                        padding: EdgeInsets.all(12),
+                      ),
                       ),
                     ),
                   ],
@@ -409,14 +437,18 @@ class NotesTab extends StatelessWidget {
                 // Progress bar at the bottom when downloading
                 if (isDownloading) ...[
                   SizedBox(height: 12),
-                  Column(
+                  Semantics(
+                    liveRegion: true,
+                    label:
+                        'Opening, ${(downloadProgress * 100).toInt()} percent',
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Downloading...',
+                            'Opening...',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.primary,
                               fontWeight: FontWeight.w500,
@@ -445,50 +477,15 @@ class NotesTab extends StatelessWidget {
                       ),
                     ],
                   ),
+                  ),
                 ],
               ],
             ),
           ),
         ),
       ),
+      ),
     );
-  }
-
-  void _handleNoteTap(Note note, ChapterDetailController controller) {
-    final String type = note.content.toLowerCase() == 'pdf' ? 'PDF' : 'DOC';
-
-    if (type == 'PDF') {
-      controller.openPDF(note.id);
-    } else {
-      // For other types, show a message or implement other viewers
-      AppSnackbar.showInfo('Info', 'Opening ${type.toUpperCase()} viewer');
-    }
-  }
-
-  void _handleNoteAction(Note note, ChapterDetailController controller) {
-    final String type = note.content.toLowerCase() == 'pdf' ? 'PDF' : 'DOC';
-    final bool isDownloaded = note.isDownloaded;
-
-    if (type == 'pdf') {
-      if (isDownloaded) {
-        controller.openPDF(note.id);
-      } else {
-        controller.downloadNote(note.id);
-      }
-    } else {
-      controller.downloadNote(note.id);
-    }
-  }
-
-  IconData _getActionIcon(Note note) {
-    final String type = note.content.toLowerCase() == 'pdf' ? 'PDF' : 'DOC';
-    final bool isDownloaded = note.isDownloaded;
-
-    if (type == 'pdf' && isDownloaded) {
-      return Icons.folder_open;
-    } else {
-      return Icons.download_outlined;
-    }
   }
 
   Color _getFileTypeColor(String type) {

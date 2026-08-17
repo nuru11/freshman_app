@@ -365,7 +365,7 @@ class _VideosTab extends StatelessWidget {
                                     size: 16,
                                   ),
                                 ),
-                              if (video.isDownloading)
+                              if (video.isDownloading || video.isPaused)
                                 Positioned.fill(
                                   child: Center(
                                     child: CircularProgressIndicator(
@@ -441,7 +441,9 @@ class _VideosTab extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${video.duration} minutes',
+                                video.size != null && video.size! > 0
+                                    ? '${video.duration} minutes • ${video.size} MB'
+                                    : '${video.duration} minutes',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Colors.grey.shade600,
@@ -460,6 +462,8 @@ class _VideosTab extends StatelessWidget {
                                           ? Colors.orange.withValues(alpha: 0.1)
                                           : video.isDownloaded
                                           ? Colors.green.withValues(alpha: 0.1)
+                                          : video.isPaused
+                                          ? Colors.amber.withValues(alpha: 0.15)
                                           : video.isDownloading
                                           ? Colors.blue.withValues(alpha: 0.1)
                                           : Colors.grey.withValues(alpha: 0.1),
@@ -470,6 +474,8 @@ class _VideosTab extends StatelessWidget {
                                           ? 'LOCKED'
                                           : video.isDownloaded
                                           ? 'DOWNLOADED'
+                                          : video.isPaused
+                                          ? 'PAUSED'
                                           : video.isDownloading
                                           ? 'DOWNLOADING'
                                           : 'AVAILABLE',
@@ -480,13 +486,15 @@ class _VideosTab extends StatelessWidget {
                                             ? Colors.orange
                                             : video.isDownloaded
                                             ? Colors.green
+                                            : video.isPaused
+                                            ? Colors.amber.shade800
                                             : video.isDownloading
                                             ? Colors.blue
                                             : Colors.grey,
                                       ),
                                     ),
                                   ),
-                                  if (video.isDownloading) ...[
+                                  if (video.isDownloading || video.isPaused) ...[
                                     const SizedBox(width: 8),
                                     Text(
                                       '${(video.downloadProgress * 100).toInt()}%',
@@ -529,11 +537,31 @@ class _VideosTab extends StatelessWidget {
                                 ),
                               ),
                             ] else if (video.isDownloading) ...[
-                              const IconButton(
-                                onPressed: null,
-                                icon: Icon(
-                                  Icons.downloading_rounded,
+                              IconButton(
+                                tooltip: 'Pause download',
+                                onPressed: () =>
+                                    controller.pauseVideoDownload(video.id),
+                                icon: const Icon(
+                                  Icons.pause_circle_outline_rounded,
                                   color: Colors.blue,
+                                ),
+                              ),
+                            ] else if (video.isPaused) ...[
+                              IconButton(
+                                tooltip: 'Resume download',
+                                onPressed: () =>
+                                    controller.resumeVideoDownload(video),
+                                icon: const Icon(
+                                  Icons.play_circle_outline_rounded,
+                                  color: Colors.amber,
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Delete partial download',
+                                onPressed: () => controller.deleteVideo(video),
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  color: Colors.red,
                                 ),
                               ),
                             ] else ...[
@@ -1040,7 +1068,7 @@ class _NotesTab extends StatelessWidget {
           return _buildEmptyState(
             icon: Icons.description_outlined,
             title: 'No Notes Available',
-            subtitle: 'No notes found in your library',
+            subtitle: 'Notes you open stay in the app. Nothing is saved to your phone Downloads.',
           );
         }
 
@@ -1066,6 +1094,15 @@ class _NotesTab extends StatelessWidget {
     int index,
   ) {
     final isLocked = controller.isNoteLocked(note);
+    final statusLabel = isLocked
+        ? 'locked'
+        : note.isDownloading
+        ? 'opening, ${(note.downloadProgress * 100).toInt()} percent'
+        : note.isDownloaded
+        ? 'saved in app'
+        : 'available in app';
+    final semanticLabel =
+        'PDF note, ${note.title}, $statusLabel. Double tap to open in the app.';
 
     return TweenAnimationBuilder<double>(
       duration: Duration(milliseconds: 300 + (index * 100)),
@@ -1075,7 +1112,10 @@ class _NotesTab extends StatelessWidget {
           scale: value,
           child: Opacity(
             opacity: value,
-            child: Container(
+            child: Semantics(
+              container: true,
+              label: semanticLabel,
+              child: Container(
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -1091,9 +1131,9 @@ class _NotesTab extends StatelessWidget {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: note.isDownloaded && !isLocked
-                      ? () => controller.openNote(note)
-                      : null,
+                  onTap: isLocked || note.isDownloading
+                      ? null
+                      : () => controller.openNote(note),
                   borderRadius: BorderRadius.circular(20),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -1239,10 +1279,10 @@ class _NotesTab extends StatelessWidget {
                                       isLocked
                                           ? 'LOCKED'
                                           : note.isDownloaded
-                                          ? 'DOWNLOADED'
+                                          ? 'SAVED IN APP'
                                           : note.isDownloading
-                                          ? 'DOWNLOADING'
-                                          : 'AVAILABLE',
+                                          ? 'OPENING'
+                                          : 'OPEN IN APP',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w600,
@@ -1288,42 +1328,48 @@ class _NotesTab extends StatelessWidget {
                             if (isLocked) ...[
                               IconButton(
                                 onPressed: null,
+                                tooltip: 'Note locked',
                                 icon: Icon(
                                   Icons.lock_rounded,
                                   color: Colors.grey.shade400,
-                                ),
-                              ),
-                            ] else if (note.isDownloaded) ...[
-                              IconButton(
-                                onPressed: () => controller.openNote(note),
-                                icon: const Icon(
-                                  Icons.open_in_new_rounded,
-                                  color: Color(0xFF4facfe),
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () => controller.deleteNote(note),
-                                icon: const Icon(
-                                  Icons.delete_outline_rounded,
-                                  color: Colors.red,
+                                  semanticLabel: 'Locked',
                                 ),
                               ),
                             ] else if (note.isDownloading) ...[
-                              const IconButton(
-                                onPressed: null,
-                                icon: Icon(
-                                  Icons.downloading_rounded,
-                                  color: Colors.blue,
+                              Semantics(
+                                liveRegion: true,
+                                label:
+                                    'Opening, ${(note.downloadProgress * 100).toInt()} percent',
+                                child: IconButton(
+                                  onPressed: null,
+                                  tooltip: 'Opening note',
+                                  icon: Icon(
+                                    Icons.hourglass_top_rounded,
+                                    color: Colors.blue,
+                                    semanticLabel: 'Opening',
+                                  ),
                                 ),
                               ),
                             ] else ...[
                               IconButton(
-                                onPressed: () => controller.downloadNote(note),
+                                onPressed: () => controller.openNote(note),
+                                tooltip: 'Open note in app',
                                 icon: const Icon(
-                                  Icons.download_rounded,
-                                  color: Colors.green,
+                                  Icons.menu_book_rounded,
+                                  color: Color(0xFF4facfe),
+                                  semanticLabel: 'Open in app',
                                 ),
                               ),
+                              if (note.isDownloaded)
+                                IconButton(
+                                  onPressed: () => controller.deleteNote(note),
+                                  tooltip: 'Remove in-app copy',
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Colors.red,
+                                    semanticLabel: 'Remove from app',
+                                  ),
+                                ),
                             ],
                           ],
                         ),
@@ -1332,6 +1378,7 @@ class _NotesTab extends StatelessWidget {
                   ),
                 ),
               ),
+            ),
             ),
           ),
         );

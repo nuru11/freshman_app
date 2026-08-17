@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:vector_academy/controllers/controllers.dart';
 
-class VideoPlayerScreen extends StatelessWidget {
+class VideoPlayerScreen extends StatefulWidget {
   final String videoUrl;
   final String videoTitle;
   final int videoId;
@@ -16,52 +16,54 @@ class VideoPlayerScreen extends StatelessWidget {
   });
 
   @override
+  State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
+}
+
+class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
+  late final CustomVideoPlayerController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    if (Get.isRegistered<CustomVideoPlayerController>()) {
+      Get.delete<CustomVideoPlayerController>(force: true);
+    }
+    controller = Get.put(CustomVideoPlayerController());
+    controller.initializeVideo(
+      widget.videoUrl,
+      widget.videoTitle,
+      widget.videoId,
+    );
+  }
+
+  @override
+  void dispose() {
+    if (Get.isRegistered<CustomVideoPlayerController>()) {
+      Get.delete<CustomVideoPlayerController>(force: true);
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Initialize controller with arguments
-    final controller = Get.put(CustomVideoPlayerController());
-
     final theme = Theme.of(context);
-
-    controller.initializeVideo(videoUrl, videoTitle, videoId);
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Stack(
           children: [
-            // Video Player
             Center(
-              child: Obx(
-                () => controller.isInitialized.value
-                    ? AspectRatio(
-                        aspectRatio:
-                            controller.videoController.value.aspectRatio,
-                        child: VideoPlayer(controller.videoController),
-                      )
-                    : Container(
-                        width: double.infinity,
-                        height: 200,
-                        color: Colors.grey[900],
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(
-                              color: theme.colorScheme.primary,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Loading video...',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-              ),
+              child: Obx(() {
+                if (controller.isInitialized.value) {
+                  return AspectRatio(
+                    aspectRatio: controller.videoController.value.aspectRatio,
+                    child: VideoPlayer(controller.videoController),
+                  );
+                }
+                return _buildStatusOverlay(theme);
+              }),
             ),
-
-            // Video Controls
             Obx(
               () => controller.isInitialized.value
                   ? Positioned.fill(
@@ -86,18 +88,12 @@ class VideoPlayerScreen extends StatelessWidget {
                               ),
                               child: Column(
                                 children: [
-                                  // Top Controls
-                                  _buildTopControls(theme, controller),
-
-                                  // Center Play Button
-                                  _buildCenterPlayButton(controller),
-
-                                  // Bottom Controls
-                                  _buildBottomControls(
+                                  _buildTopControls(
                                     theme,
-                                    context,
-                                    controller,
+                                    showFullscreen: true,
                                   ),
+                                  _buildCenterPlayButton(),
+                                  _buildBottomControls(theme, context),
                                 ],
                               ),
                             ),
@@ -105,7 +101,12 @@ class VideoPlayerScreen extends StatelessWidget {
                         ),
                       ),
                     )
-                  : const SizedBox.shrink(),
+                  : Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: _buildTopControls(theme, showFullscreen: false),
+                    ),
             ),
           ],
         ),
@@ -113,10 +114,49 @@ class VideoPlayerScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTopControls(
-    ThemeData theme,
-    CustomVideoPlayerController controller,
-  ) {
+  Widget _buildStatusOverlay(ThemeData theme) {
+    return Obx(() {
+      final failed = controller.hasError.value;
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        color: Colors.grey[900],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (failed)
+              const Icon(Icons.error_outline, color: Colors.white, size: 48)
+            else
+              CircularProgressIndicator(color: theme.colorScheme.primary),
+            const SizedBox(height: 16),
+            Text(
+              failed
+                  ? (controller.errorMessage.value.isEmpty
+                        ? 'Failed to load video'
+                        : controller.errorMessage.value)
+                  : 'Loading video...',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white),
+            ),
+            if (failed) ...[
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: controller.retryInitialize,
+                icon: const Icon(Icons.refresh, color: Colors.white),
+                label: const Text(
+                  'Retry',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildTopControls(ThemeData theme, {required bool showFullscreen}) {
     return Container(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -127,7 +167,7 @@ class VideoPlayerScreen extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              videoTitle,
+              widget.videoTitle,
               style: theme.textTheme.titleMedium?.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
@@ -136,24 +176,25 @@ class VideoPlayerScreen extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          Obx(
-            () => IconButton(
-              onPressed: controller.toggleFullscreen,
-              icon: Icon(
-                controller.isFullscreen.value
-                    ? Icons.fullscreen_exit
-                    : Icons.fullscreen,
-                color: Colors.white,
-                size: 28,
+          if (showFullscreen)
+            Obx(
+              () => IconButton(
+                onPressed: controller.toggleFullscreen,
+                icon: Icon(
+                  controller.isFullscreen.value
+                      ? Icons.fullscreen_exit
+                      : Icons.fullscreen,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildCenterPlayButton(CustomVideoPlayerController controller) {
+  Widget _buildCenterPlayButton() {
     return Expanded(
       child: Center(
         child: Obx(
@@ -170,16 +211,11 @@ class VideoPlayerScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomControls(
-    ThemeData theme,
-    BuildContext context,
-    CustomVideoPlayerController controller,
-  ) {
+  Widget _buildBottomControls(ThemeData theme, BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Progress Bar
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: theme.colorScheme.primary,
@@ -203,8 +239,6 @@ class VideoPlayerScreen extends StatelessWidget {
               );
             }),
           ),
-
-          // Time and Controls
           Row(
             children: [
               Obx(
@@ -225,6 +259,42 @@ class VideoPlayerScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
+              Obx(() {
+                final canDecrease = controller.canDecreaseSpeed;
+                final canIncrease = controller.canIncreaseSpeed;
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: canDecrease ? controller.decreaseSpeed : null,
+                      icon: Icon(
+                        Icons.remove,
+                        color: Colors.white.withValues(
+                          alpha: canDecrease ? 1.0 : 0.4,
+                        ),
+                        size: 22,
+                      ),
+                    ),
+                    Text(
+                      controller.formattedPlaybackSpeed,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: canIncrease ? controller.increaseSpeed : null,
+                      icon: Icon(
+                        Icons.add,
+                        color: Colors.white.withValues(
+                          alpha: canIncrease ? 1.0 : 0.4,
+                        ),
+                        size: 22,
+                      ),
+                    ),
+                  ],
+                );
+              }),
               Obx(
                 () => IconButton(
                   onPressed: controller.togglePlayPause,

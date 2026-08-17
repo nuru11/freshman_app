@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:dio/dio.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/utils/utils.dart';
 import 'package:vector_academy/utils/storages/storages.dart';
@@ -34,6 +35,9 @@ class DownloadsController extends GetxController {
 
   // Tracks active download progress by ID so it survives page navigation
   final Map<int, double> activeVideoDownloads = {};
+  final Map<int, double> pausedVideoDownloads = {};
+  final Map<int, CancelToken> _videoCancelTokens = {};
+  final Map<int, Video> _activeVideoSources = {};
   final Map<int, double> activeNoteDownloads = {};
 
   // Callbacks set by ChapterDetailController so progress can be pushed back
@@ -41,6 +45,7 @@ class DownloadsController extends GetxController {
   void Function(int videoId, double progress)? onVideoProgress;
   void Function(int videoId, String filePath)? onVideoCompleted;
   void Function(int videoId)? onVideoError;
+  void Function(int videoId, double progress)? onVideoPaused;
   void Function(int noteId, double progress)? onNoteProgress;
   void Function(int noteId, String filePath)? onNoteCompleted;
   void Function(int noteId)? onNoteError;
@@ -51,33 +56,39 @@ class DownloadsController extends GetxController {
       hasFullAccessOverrideForPhone(_user?.phoneNumber);
 
   bool isVideoLocked(Video video) {
-    if (hasFullAccessOverride) {
-      return false;
-    }
-    if (hasDownloadedVideoFile(video)) {
-      return false;
-    }
-    return video.isLocked;
+    // App Store review: treat content as free (uncomment block to restore)
+    return false;
+    // if (hasFullAccessOverride) {
+    //   return false;
+    // }
+    // if (hasDownloadedVideoFile(video)) {
+    //   return false;
+    // }
+    // return video.isLocked;
   }
 
   bool isNoteLocked(Note note) {
-    if (hasFullAccessOverride) {
-      return false;
-    }
-    if (hasDownloadedNoteFile(note)) {
-      return false;
-    }
-    return note.isLocked;
+    // App Store review: treat content as free (uncomment block to restore)
+    return false;
+    // if (hasFullAccessOverride) {
+    //   return false;
+    // }
+    // if (hasDownloadedNoteFile(note)) {
+    //   return false;
+    // }
+    // return note.isLocked;
   }
 
   bool isExamLocked(Exam exam) {
-    if (hasFullAccessOverride) {
-      return false;
-    }
-    if (hasDownloadedExamContent(exam)) {
-      return false;
-    }
-    return exam.isLocked;
+    // App Store review: treat content as free (uncomment block to restore)
+    return false;
+    // if (hasFullAccessOverride) {
+    //   return false;
+    // }
+    // if (hasDownloadedExamContent(exam)) {
+    //   return false;
+    // }
+    // return exam.isLocked;
   }
 
   @override
@@ -119,6 +130,7 @@ class DownloadsController extends GetxController {
     } catch (e) {
       allVideos = await _videoStorage.getAllVideos();
     } finally {
+      await _restorePausedVideoDownloads();
       isLoadingVideos = false;
       update();
     }
@@ -189,25 +201,35 @@ class DownloadsController extends GetxController {
 
     try {
       video.isDownloading = true;
-      video.downloadProgress = 0.0;
-      activeVideoDownloads[video.id] = 0.0;
+      video.isPaused = false;
+      pausedVideoDownloads.remove(video.id);
+      activeVideoDownloads[video.id] = video.downloadProgress;
+      await _videoStorage.removePausedDownload(video.id);
 
-      // Mirror state on the allVideos entry if different object
+      final token = CancelToken();
+      _videoCancelTokens[video.id] = token;
+      _activeVideoSources[video.id] = video;
+
       _mirrorVideoState(video);
       update();
-      // Notify listeners (e.g. ChapterDetailController) so UI rebuilds before first file progress event.
-      onVideoProgress?.call(video.id, 0.0);
+      onVideoProgress?.call(video.id, video.downloadProgress);
 
       final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
+      final partFile = await VideoApiService.partFileFor(video.id);
+      final startByte = await partFile.exists() ? await partFile.length() : 0;
 
       await _videoApiService.downloadVideo(
         video.id,
         deviceId: device.id,
+        cancelToken: token,
+        startByte: startByte,
         onData: (data, progress) {
-          // Skip flutter_file_downloader's first callback (download queue id, no filename).
           if (data == null) return;
-          final p = progress / 100.0;
+          if (!activeVideoDownloads.containsKey(video.id)) return;
+          final p = (progress / 100.0).clamp(0.0, 1.0);
           video.downloadProgress = p;
+          video.isDownloading = true;
+          video.isPaused = false;
           activeVideoDownloads[video.id] = p;
 
           _mirrorVideoState(video);
@@ -218,45 +240,187 @@ class DownloadsController extends GetxController {
           video.filePath = path;
           video.isDownloaded = true;
           video.isDownloading = false;
+          video.isPaused = false;
           video.downloadProgress = 1.0;
           activeVideoDownloads.remove(video.id);
+          pausedVideoDownloads.remove(video.id);
+          _videoCancelTokens.remove(video.id);
+          _activeVideoSources.remove(video.id);
 
           _mirrorVideoState(video);
           _videoStorage.addDownloadedVideo(video.id, path);
+          _videoStorage.removePausedDownload(video.id);
           onVideoCompleted?.call(video.id, path);
           update();
 
           AppSnackbar.showSuccess('Success', 'Video downloaded successfully');
         },
         onError: (error) {
-          video.isDownloading = false;
-          video.downloadProgress = 0.0;
-          activeVideoDownloads.remove(video.id);
-
-          _mirrorVideoState(video);
-          onVideoError?.call(video.id);
-          update();
-
-          AppSnackbar.showError(
-            'Error',
-            ApiErrorMessage.from(error, fallback: 'Failed to download video'),
-          );
+          _handleVideoDownloadFailure(video, error);
         },
       );
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) {
+        return;
+      }
+      await _handleVideoDownloadFailure(video, e);
     } catch (e) {
+      await _handleVideoDownloadFailure(video, e);
+    }
+  }
+
+  Future<void> pauseVideoDownload(int videoId) async {
+    final token = _videoCancelTokens.remove(videoId);
+    if (token == null || token.isCancelled) {
+      return;
+    }
+
+    token.cancel('paused');
+
+    final progress =
+        activeVideoDownloads.remove(videoId) ??
+        pausedVideoDownloads[videoId] ??
+        0.0;
+    pausedVideoDownloads[videoId] = progress;
+
+    final source = _activeVideoSources.remove(videoId);
+    if (source != null) {
+      source.isDownloading = false;
+      source.isPaused = true;
+      source.downloadProgress = progress;
+      _mirrorVideoState(source);
+    }
+
+    final mirror = allVideos.firstWhereOrNull((v) => v.id == videoId);
+    if (mirror != null) {
+      mirror.isDownloading = false;
+      mirror.isPaused = true;
+      mirror.downloadProgress = progress;
+    }
+
+    final part = await VideoApiService.partFileFor(videoId);
+    await _videoStorage.upsertPausedDownload(videoId, progress, part.path);
+    onVideoPaused?.call(videoId, progress);
+    update();
+  }
+
+  Future<void> resumeVideoDownload(Video video) async {
+    if (video.isDownloading || activeVideoDownloads.containsKey(video.id)) {
+      return;
+    }
+    video.isPaused = false;
+    pausedVideoDownloads.remove(video.id);
+    await downloadVideo(video);
+  }
+
+  Future<void> _handleVideoDownloadFailure(Video video, [Object? error]) async {
+    _videoCancelTokens.remove(video.id);
+    _activeVideoSources.remove(video.id);
+    activeVideoDownloads.remove(video.id);
+
+    final part = await VideoApiService.partFileFor(video.id);
+    final hasPartial = await part.exists() && await part.length() > 0;
+    if (hasPartial) {
       video.isDownloading = false;
-      video.downloadProgress = 0.0;
-      activeVideoDownloads.remove(video.id);
-
+      video.isPaused = true;
+      pausedVideoDownloads[video.id] = video.downloadProgress;
       _mirrorVideoState(video);
-      onVideoError?.call(video.id);
+      await _videoStorage.upsertPausedDownload(
+        video.id,
+        video.downloadProgress,
+        part.path,
+      );
+      onVideoPaused?.call(video.id, video.downloadProgress);
       update();
-
       AppSnackbar.showError(
         'Error',
-        ApiErrorMessage.from(e, fallback: 'Failed to download video'),
+        ApiErrorMessage.from(
+          error ?? 'Download interrupted',
+          fallback: 'Download interrupted. You can resume it.',
+        ),
       );
+      return;
     }
+
+    video.isDownloading = false;
+    video.isPaused = false;
+    video.downloadProgress = 0.0;
+    _mirrorVideoState(video);
+    onVideoError?.call(video.id);
+    update();
+    AppSnackbar.showError(
+      'Error',
+      ApiErrorMessage.from(
+        error ?? 'Failed to download video',
+        fallback: 'Failed to download video',
+      ),
+    );
+  }
+
+  Future<void> _restorePausedVideoDownloads() async {
+    pausedVideoDownloads.clear();
+    final paused = await _videoStorage.getPausedDownloads();
+    for (final entry in paused) {
+      final rawId = entry['id'];
+      final id = rawId is int ? rawId : int.tryParse('$rawId');
+      if (id == null) continue;
+      final progress = (entry['progress'] as num?)?.toDouble() ?? 0.0;
+      final partPath = entry['part_path'] as String?;
+      if (partPath != null && !File(partPath).existsSync()) {
+        await _videoStorage.removePausedDownload(id);
+        continue;
+      }
+      pausedVideoDownloads[id] = progress;
+      final video = allVideos.firstWhereOrNull((v) => v.id == id);
+      if (video != null) {
+        video.isPaused = true;
+        video.isDownloading = false;
+        video.downloadProgress = progress;
+      }
+    }
+
+    try {
+      final dir = await VideoApiService.videosDirectory();
+      if (!await dir.exists()) return;
+      await for (final entity in dir.list()) {
+        if (entity is! File) continue;
+        final name = entity.uri.pathSegments.isEmpty
+            ? ''
+            : entity.uri.pathSegments.last;
+        final match = RegExp(r'^video_(\d+)\.mp4\.part$').firstMatch(name);
+        if (match == null) continue;
+        final id = int.tryParse(match.group(1)!);
+        if (id == null || pausedVideoDownloads.containsKey(id)) continue;
+        pausedVideoDownloads[id] = 0.0;
+        await _videoStorage.upsertPausedDownload(id, 0.0, entity.path);
+        final video = allVideos.firstWhereOrNull((v) => v.id == id);
+        if (video != null) {
+          video.isPaused = true;
+          video.isDownloading = false;
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _deleteVideoPartFile(int videoId) async {
+    try {
+      final part = await VideoApiService.partFileFor(videoId);
+      if (await part.exists()) {
+        await part.delete();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _clearVideoTransferState(int videoId) async {
+    final token = _videoCancelTokens.remove(videoId);
+    if (token != null && !token.isCancelled) {
+      token.cancel('cleared');
+    }
+    activeVideoDownloads.remove(videoId);
+    pausedVideoDownloads.remove(videoId);
+    _activeVideoSources.remove(videoId);
+    await _videoStorage.removePausedDownload(videoId);
+    await _deleteVideoPartFile(videoId);
   }
 
   /// Keeps the matching entry in [allVideos] in sync when the download was
@@ -265,6 +429,7 @@ class DownloadsController extends GetxController {
     final mirror = allVideos.firstWhereOrNull((v) => v.id == source.id);
     if (mirror != null && mirror != source) {
       mirror.isDownloading = source.isDownloading;
+      mirror.isPaused = source.isPaused;
       mirror.isDownloaded = source.isDownloaded;
       mirror.downloadProgress = source.downloadProgress;
       mirror.filePath = source.filePath;
@@ -281,16 +446,25 @@ class DownloadsController extends GetxController {
     }
   }
 
-  // Download note
-  Future<void> downloadNote(Note note) async {
-    if (note.isDownloaded) {
-      AppSnackbar.showInfo('Info', 'Note is already downloaded');
-      return;
+  /// Fetches a note into the private in-app cache. Returns true on success.
+  Future<bool> ensureNoteCached(Note note) async {
+    if (hasDownloadedNoteFile(note) ||
+        await NoteFileCache.instance.hasCache(
+          note.id,
+          storedPath: note.filePath,
+        )) {
+      if (!note.isDownloaded) {
+        note.isDownloaded = true;
+        note.filePath ??= await NoteFileCache.instance.cacheFilePath(note.id);
+        _mirrorNoteState(note);
+        update();
+      }
+      return true;
     }
 
     if (note.isDownloading || activeNoteDownloads.containsKey(note.id)) {
-      AppSnackbar.showInfo('Info', 'Note is already being downloaded');
-      return;
+      AppSnackbar.showInfo('Info', 'This note is already opening');
+      return false;
     }
 
     try {
@@ -300,16 +474,15 @@ class DownloadsController extends GetxController {
 
       _mirrorNoteState(note);
       update();
-      // Notify listeners (e.g. ChapterDetailController) so UI rebuilds before first file progress event.
       onNoteProgress?.call(note.id, 0.0);
 
       final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
+      var succeeded = false;
 
       await _noteApiService.downloadNote(
         note.id,
         deviceId: device.id,
         onData: (data, progress) {
-          // Skip flutter_file_downloader's first callback (download queue id, no filename).
           if (data == null) return;
           final p = progress / 100.0;
           note.downloadProgress = p;
@@ -330,8 +503,7 @@ class DownloadsController extends GetxController {
           _noteStorage.addDownloadedNote(note.id, path);
           onNoteCompleted?.call(note.id, path);
           update();
-
-          AppSnackbar.showSuccess('Success', 'Note downloaded successfully');
+          succeeded = true;
         },
         onError: (error) {
           note.isDownloading = false;
@@ -344,10 +516,11 @@ class DownloadsController extends GetxController {
 
           AppSnackbar.showError(
             'Error',
-            ApiErrorMessage.from(error, fallback: 'Failed to download note'),
+            ApiErrorMessage.from(error, fallback: 'Could not open note'),
           );
         },
       );
+      return succeeded && hasDownloadedNoteFile(note);
     } catch (e) {
       note.isDownloading = false;
       note.downloadProgress = 0.0;
@@ -359,9 +532,14 @@ class DownloadsController extends GetxController {
 
       AppSnackbar.showError(
         'Error',
-        ApiErrorMessage.from(e, fallback: 'Failed to download note'),
+        ApiErrorMessage.from(e, fallback: 'Could not open note'),
       );
+      return false;
     }
+  }
+
+  Future<void> downloadNote(Note note) async {
+    await openNote(note);
   }
 
   // Download exam (download questions)
@@ -433,22 +611,47 @@ class DownloadsController extends GetxController {
     );
   }
 
-  // Open note
-  void openNote(Note note) {
-    if (!note.isDownloaded || note.filePath == null) {
-      AppSnackbar.showError('Error', 'Note not downloaded');
+  // Open note inside the app only (private cache, no public download).
+  Future<void> openNote(Note note) async {
+    if (isNoteLocked(note)) {
+      AppSnackbar.showWarning(
+        'Locked Content',
+        'Subscribe to this subject to access all sections.',
+      );
       return;
     }
 
-    // Navigate to PDF reader or appropriate viewer
+    final cached = await ensureNoteCached(note);
+    if (!cached) return;
 
-    if (note.filePath != null) {
+    try {
+      final viewPath = await NoteFileCache.instance.prepareViewFile(
+        note.id,
+        storedPath: note.filePath,
+      );
+      final canonical = await NoteFileCache.instance.cacheFilePath(note.id);
+      if (note.filePath != canonical && File(canonical).existsSync()) {
+        note.filePath = canonical;
+        note.isDownloaded = true;
+        await _noteStorage.addDownloadedNote(note.id, canonical);
+        _mirrorNoteState(note);
+        update();
+      }
+
       Get.to(
         () => PDFReaderScreen(
-          pdfUrl: note.filePath!,
+          pdfUrl: viewPath,
           pdfTitle: note.title,
           pdfId: note.id,
+          protectContent: true,
+          enableListen: true,
         ),
+      );
+    } catch (e) {
+      logger.e('Failed to open note: $e');
+      AppSnackbar.showError(
+        'Error',
+        ApiErrorMessage.from(e, fallback: 'Could not open note'),
       );
     }
   }
@@ -505,6 +708,8 @@ class DownloadsController extends GetxController {
           TextButton(
             onPressed: () async {
               try {
+                await _clearVideoTransferState(video.id);
+
                 // Delete file from storage
                 if (video.filePath != null) {
                   final file = File(video.filePath!);
@@ -518,6 +723,8 @@ class DownloadsController extends GetxController {
 
                 // Update video state
                 video.isDownloaded = false;
+                video.isPaused = false;
+                video.isDownloading = false;
                 video.filePath = null;
                 video.downloadProgress = 0.0;
 
@@ -540,29 +747,25 @@ class DownloadsController extends GetxController {
     );
   }
 
-  // Delete note
+  // Remove the private in-app cache for a note (the note stays on the server).
   void deleteNote(Note note) {
     Get.dialog(
       AlertDialog(
-        title: const Text('Delete Note'),
-        content: Text('Are you sure you want to delete "${note.title}"?'),
+        title: const Text('Remove from app'),
+        content: Text(
+          'Remove the in-app copy of "${note.title}"? You can open it again later. The file is never saved to your phone Downloads.',
+        ),
         actions: [
           TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           TextButton(
             onPressed: () async {
               try {
-                // Delete file from storage
-                if (note.filePath != null) {
-                  final file = File(note.filePath!);
-                  if (file.existsSync()) {
-                    await file.delete();
-                  }
-                }
-
-                // Remove from local storage
+                await NoteFileCache.instance.deleteCache(
+                  note.id,
+                  storedPath: note.filePath,
+                );
                 await _noteStorage.removeDownloadedNote(note.id);
 
-                // Update note state
                 note.isDownloaded = false;
                 note.filePath = null;
                 note.downloadProgress = 0.0;
@@ -570,16 +773,16 @@ class DownloadsController extends GetxController {
                 update();
 
                 Get.back();
-                AppSnackbar.showSuccess('Success', 'Note deleted successfully');
+                AppSnackbar.showSuccess('Removed', 'In-app copy removed');
               } catch (e) {
                 Get.back();
                 AppSnackbar.showError(
                   'Error',
-                  ApiErrorMessage.from(e, fallback: 'Failed to delete note'),
+                  ApiErrorMessage.from(e, fallback: 'Failed to remove note'),
                 );
               }
             },
-            child: const Text('Delete'),
+            child: const Text('Remove'),
           ),
         ],
       ),
@@ -650,30 +853,32 @@ class DownloadsController extends GetxController {
             onPressed: () async {
               try {
                 // Delete all video files
-                for (var video in allVideos.where((v) => v.isDownloaded)) {
+                for (var video in allVideos) {
                   if (video.filePath != null) {
                     final file = File(video.filePath!);
                     if (file.existsSync()) {
                       await file.delete();
                     }
                   }
+                  await _clearVideoTransferState(video.id);
                   video.isDownloaded = false;
+                  video.isPaused = false;
+                  video.isDownloading = false;
                   video.filePath = null;
                   video.downloadProgress = 0.0;
                 }
 
-                // Delete all note files
+                // Delete all private note caches
                 for (var note in allNotes.where((n) => n.isDownloaded)) {
-                  if (note.filePath != null) {
-                    final file = File(note.filePath!);
-                    if (file.existsSync()) {
-                      await file.delete();
-                    }
-                  }
+                  await NoteFileCache.instance.deleteCache(
+                    note.id,
+                    storedPath: note.filePath,
+                  );
                   note.isDownloaded = false;
                   note.filePath = null;
                   note.downloadProgress = 0.0;
                 }
+                await NoteFileCache.instance.deleteAllCaches();
 
                 // Clear exam downloads and ALL progress
                 for (var exam in allExams.where((e) => e.isDownloaded)) {
@@ -695,6 +900,7 @@ class DownloadsController extends GetxController {
 
                 // Clear all storage
                 await _videoStorage.removeAllDownloadedVideos();
+                await _videoStorage.removeAllPausedDownloads();
                 await _noteStorage.removeAllDownloadedNotes();
                 await _examStorage.removeAllDownloadedExams();
 
@@ -743,20 +949,24 @@ class DownloadsController extends GetxController {
             onPressed: () async {
               try {
                 // Delete all video files
-                for (var video in allVideos.where((v) => v.isDownloaded)) {
+                for (var video in allVideos) {
                   if (video.filePath != null) {
                     final file = File(video.filePath!);
                     if (file.existsSync()) {
                       await file.delete();
                     }
                   }
+                  await _clearVideoTransferState(video.id);
                   video.isDownloaded = false;
+                  video.isPaused = false;
+                  video.isDownloading = false;
                   video.filePath = null;
                   video.downloadProgress = 0.0;
                 }
 
                 // Clear video storage
                 await _videoStorage.removeAllDownloadedVideos();
+                await _videoStorage.removeAllPausedDownloads();
                 update();
 
                 Get.back();
@@ -847,32 +1057,29 @@ class DownloadsController extends GetxController {
       AlertDialog(
         title: const Text('Clear Notes'),
         content: const Text(
-          'Are you sure you want to delete all downloaded notes? This action cannot be undone.',
+          'Remove all in-app note copies? You can open notes again later. Files are never saved to your phone Downloads.',
         ),
         actions: [
           TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           TextButton(
             onPressed: () async {
               try {
-                // Delete all note files
                 for (var note in allNotes.where((n) => n.isDownloaded)) {
-                  if (note.filePath != null) {
-                    final file = File(note.filePath!);
-                    if (file.existsSync()) {
-                      await file.delete();
-                    }
-                  }
+                  await NoteFileCache.instance.deleteCache(
+                    note.id,
+                    storedPath: note.filePath,
+                  );
                   note.isDownloaded = false;
                   note.filePath = null;
                   note.downloadProgress = 0.0;
                 }
+                await NoteFileCache.instance.deleteAllCaches();
 
-                // Clear note storage
                 await _noteStorage.removeAllDownloadedNotes();
                 update();
 
                 Get.back();
-                AppSnackbar.showSuccess('Success', 'All notes cleared successfully');
+                AppSnackbar.showSuccess('Removed', 'In-app note copies removed');
               } catch (e) {
                 Get.back();
                 AppSnackbar.showError(

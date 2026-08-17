@@ -377,8 +377,8 @@ class VideoTab extends StatelessWidget {
                       ),
                       SizedBox(height: 12),
 
-                      // Download progress bar (shown when downloading)
-                      if (video.isDownloading) ...[
+                      // Download progress bar (shown when downloading or paused)
+                      if (video.isDownloading || video.isPaused) ...[
                         Container(
                           height: 4,
                           decoration: BoxDecoration(
@@ -393,7 +393,9 @@ class VideoTab extends StatelessWidget {
                               value: video.downloadProgress,
                               backgroundColor: Colors.transparent,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                theme.colorScheme.primary,
+                                video.isPaused
+                                    ? Colors.amber
+                                    : theme.colorScheme.primary,
                               ),
                             ),
                           ),
@@ -402,15 +404,23 @@ class VideoTab extends StatelessWidget {
                         Row(
                           children: [
                             Icon(
-                              Icons.download,
+                              video.isPaused
+                                  ? Icons.pause_circle_outline
+                                  : Icons.download,
                               size: 14,
-                              color: theme.colorScheme.primary,
+                              color: video.isPaused
+                                  ? Colors.amber.shade800
+                                  : theme.colorScheme.primary,
                             ),
                             SizedBox(width: 4),
                             Text(
-                              'Downloading ${(video.downloadProgress * 100).round()}%',
+                              video.isPaused
+                                  ? 'Paused ${(video.downloadProgress * 100).round()}%'
+                                  : 'Downloading ${(video.downloadProgress * 100).round()}%',
                               style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.primary,
+                                color: video.isPaused
+                                    ? Colors.amber.shade800
+                                    : theme.colorScheme.primary,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -419,9 +429,32 @@ class VideoTab extends StatelessWidget {
                         SizedBox(height: 8),
                       ],
 
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
                         children: [
-                          if (isWatched && !isLocked) ...[
+                          if (video.size != null && video.size! > 0)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme
+                                    .colorScheme
+                                    .surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '${video.size} MB',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          if (isWatched && !isLocked)
                             Container(
                               padding: EdgeInsets.symmetric(
                                 horizontal: 10,
@@ -459,9 +492,7 @@ class VideoTab extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            SizedBox(width: 12),
-                          ],
-                          if (isLocked) ...[
+                          if (isLocked)
                             Container(
                               padding: EdgeInsets.symmetric(
                                 horizontal: 10,
@@ -499,7 +530,6 @@ class VideoTab extends StatelessWidget {
                                 ],
                               ),
                             ),
-                          ],
                         ],
                       ),
                     ],
@@ -546,7 +576,6 @@ class VideoTab extends StatelessWidget {
     }
 
     if (video.isDownloading) {
-      // Show progress indicator
       return Container(
         width: 60,
         height: 48,
@@ -558,34 +587,38 @@ class VideoTab extends StatelessWidget {
             width: 1,
           ),
         ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Circular progress indicator
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                value: video.downloadProgress,
-                strokeWidth: 2.5,
-                backgroundColor: theme.colorScheme.primary.withValues(
-                  alpha: 0.2,
-                ),
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  theme.colorScheme.primary,
-                ),
-              ),
-            ),
-            // Progress percentage text
-            Text(
-              '${(video.downloadProgress * 100).round()}%',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
-                fontSize: 8,
-              ),
-            ),
-          ],
+        child: IconButton(
+          tooltip: 'Pause download',
+          onPressed: () => controller.pauseVideoDownload(video.id),
+          icon: Icon(
+            Icons.pause,
+            color: theme.colorScheme.primary,
+            size: 22,
+          ),
+        ),
+      );
+    }
+
+    if (video.isPaused) {
+      return Container(
+        width: 60,
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.amber.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.amber.withValues(alpha: 0.4),
+            width: 1,
+          ),
+        ),
+        child: IconButton(
+          tooltip: 'Resume download',
+          onPressed: () => controller.resumeVideoDownload(video.id),
+          icon: Icon(
+            Icons.play_arrow,
+            color: Colors.amber.shade800,
+            size: 24,
+          ),
         ),
       );
     }
