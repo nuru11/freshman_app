@@ -144,29 +144,21 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
               tooltip: 'Download certificate',
             );
           }),
-        Obx(() {
-          return IconButton(
-            onPressed: controller.toggleReadMode,
-            icon: Icon(
-              controller.isReadMode
-                  ? Icons.chrome_reader_mode
-                  : Icons.chrome_reader_mode_outlined,
-              semanticLabel: controller.isReadMode
-                  ? 'Exit read mode'
-                  : 'Enter read mode',
-            ),
-            tooltip: controller.isReadMode
-                ? 'Exit Read Mode'
-                : 'Enter Read Mode',
-          );
-        }),
+        IconButton(
+          onPressed: controller.toggleReadMode,
+          icon: const Icon(
+            Icons.lock_open,
+            semanticLabel: 'Enter read mode',
+          ),
+          tooltip: 'Lock / Read Mode',
+        ),
         Obx(() {
           return IconButton(
             onPressed: controller.toggleOrientation,
             icon: Icon(
               controller.isLandscape
-                  ? Icons.screen_lock_landscape
-                  : Icons.screen_lock_portrait,
+                  ? Icons.stay_current_portrait
+                  : Icons.stay_current_landscape,
               semanticLabel: controller.isLandscape
                   ? 'Switch to portrait'
                   : 'Switch to landscape',
@@ -417,31 +409,58 @@ class _PDFView extends StatelessWidget {
               ),
             ),
           ),
-          if (controller.isReadMode && controller.showReadModeHint)
+          if (controller.isReadMode)
             Positioned(
               top: 16,
               right: 16,
-              child: AnimatedOpacity(
-                opacity: controller.showReadModeHint ? 1.0 : 0.0,
-                duration: Duration(milliseconds: 500),
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Material(
                     color: Colors.black.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.touch_app, color: Colors.white, size: 16),
-                      SizedBox(width: 4),
-                      Text(
-                        'Tap to exit',
-                        style: TextStyle(color: Colors.white, fontSize: 12),
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      onPressed: controller.toggleReadMode,
+                      tooltip: 'Unlock / Exit read mode',
+                      icon: const Icon(
+                        Icons.lock_open,
+                        color: Colors.white,
+                        semanticLabel: 'Exit read mode',
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                  if (controller.showReadModeHint) ...[
+                    const SizedBox(height: 8),
+                    AnimatedOpacity(
+                      opacity: controller.showReadModeHint ? 1.0 : 0.0,
+                      duration: Duration(milliseconds: 500),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.touch_app, color: Colors.white, size: 16),
+                            SizedBox(width: 4),
+                            Text(
+                              'Tap to exit',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
         ],

@@ -463,7 +463,7 @@ class DownloadsController extends GetxController {
     }
 
     if (note.isDownloading || activeNoteDownloads.containsKey(note.id)) {
-      AppSnackbar.showInfo('Info', 'This note is already opening');
+      AppSnackbar.showInfo('Info', 'This note is already downloading');
       return false;
     }
 
@@ -516,7 +516,7 @@ class DownloadsController extends GetxController {
 
           AppSnackbar.showError(
             'Error',
-            ApiErrorMessage.from(error, fallback: 'Could not open note'),
+            ApiErrorMessage.from(error, fallback: 'Could not download note'),
           );
         },
       );
@@ -532,14 +532,30 @@ class DownloadsController extends GetxController {
 
       AppSnackbar.showError(
         'Error',
-        ApiErrorMessage.from(e, fallback: 'Could not open note'),
+        ApiErrorMessage.from(e, fallback: 'Could not download note'),
       );
       return false;
     }
   }
 
   Future<void> downloadNote(Note note) async {
-    await openNote(note);
+    if (isNoteLocked(note)) {
+      AppSnackbar.showWarning(
+        'Locked Content',
+        'Subscribe to this subject to access all sections.',
+      );
+      return;
+    }
+
+    if (note.isDownloaded && hasDownloadedNoteFile(note)) {
+      AppSnackbar.showInfo('Info', 'Note is already downloaded');
+      return;
+    }
+
+    final cached = await ensureNoteCached(note);
+    if (cached) {
+      AppSnackbar.showSuccess('Success', 'Note downloaded successfully');
+    }
   }
 
   // Download exam (download questions)
@@ -617,6 +633,15 @@ class DownloadsController extends GetxController {
       AppSnackbar.showWarning(
         'Locked Content',
         'Subscribe to this subject to access all sections.',
+      );
+      return;
+    }
+
+    if (!note.isDownloaded || !hasDownloadedNoteFile(note)) {
+      AppSnackbar.showWarning(
+        'Note Not Available',
+        'This note needs to be downloaded first',
+        duration: const Duration(seconds: 3),
       );
       return;
     }

@@ -508,6 +508,14 @@ class ChapterDetailController extends GetxController {
         _showLockedContentMessage();
         return;
       }
+      if (!note.isDownloaded || !hasDownloadedNoteFile(note)) {
+        AppSnackbar.showWarning(
+          'Note Not Available',
+          'This note needs to be downloaded first',
+          duration: const Duration(seconds: 3),
+        );
+        return;
+      }
       _downloadsController.openNote(note);
     } catch (e) {
       logger.e('Error opening PDF: $e');
@@ -528,7 +536,7 @@ class ChapterDetailController extends GetxController {
       _showLockedContentMessage();
       return;
     }
-    await _downloadsController.openNote(note);
+    await _downloadsController.downloadNote(note);
   }
 
   void startQuiz(Exam quiz) {

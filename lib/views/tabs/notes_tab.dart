@@ -103,12 +103,14 @@ class NotesTab extends StatelessWidget {
     final statusLabel = isLocked
         ? 'locked'
         : isDownloading
-        ? 'opening, ${(downloadProgress * 100).toInt()} percent'
+        ? 'downloading, ${(downloadProgress * 100).toInt()} percent'
         : isDownloaded
-        ? 'saved in app'
-        : 'available in app';
-    final semanticLabel =
-        'PDF note, ${note.title}, $statusLabel. Double tap to open in the app.';
+        ? 'downloaded'
+        : 'not downloaded';
+    final semanticAction = isDownloaded
+        ? 'Double tap to open in the app.'
+        : 'needs to be downloaded first. Use the download button.';
+    final semanticLabel = 'PDF note, ${note.title}, $statusLabel. $semanticAction';
 
     return Semantics(
       button: !isLocked && !isDownloading,
@@ -366,72 +368,7 @@ class NotesTab extends StatelessWidget {
                     ),
 
                     // Action button
-                    Container(
-                      decoration: BoxDecoration(
-                        color: isDownloading
-                            ? theme.colorScheme.primary.withValues(alpha: 0.05)
-                            : isDownloaded
-                            ? theme.colorScheme.secondary.withValues(alpha: 0.1)
-                            : theme.colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isDownloading
-                              ? theme.colorScheme.primary.withValues(alpha: 0.1)
-                              : isDownloaded
-                              ? theme.colorScheme.secondary.withValues(
-                                  alpha: 0.2,
-                                )
-                              : theme.colorScheme.primary.withValues(
-                                  alpha: 0.2,
-                                ),
-                          width: 1,
-                        ),
-                      ),
-                      child: ExcludeSemantics(
-                      child: IconButton(
-                        tooltip: isLocked
-                            ? 'Note locked'
-                            : isDownloading
-                            ? 'Opening note'
-                            : 'Open note in app',
-                        onPressed: isDownloading || isLocked
-                            ? null
-                            : () => controller.openPDF(note.id),
-                        icon: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Icon(
-                              isLocked
-                                  ? Icons.lock_rounded
-                                  : Icons.menu_book_outlined,
-                              color: isDownloading
-                                  ? theme.colorScheme.primary.withValues(
-                                      alpha: 0.5,
-                                    )
-                                  : isDownloaded
-                                  ? theme.colorScheme.secondary
-                                  : theme.colorScheme.primary,
-                              size: 22,
-                              semanticLabel: isLocked
-                                  ? 'Locked'
-                                  : 'Open in app',
-                            ),
-                            if (isDownloading)
-                              SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  value: downloadProgress,
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
-                          ],
-                        ),
-                        padding: EdgeInsets.all(12),
-                      ),
-                      ),
-                    ),
+                    _buildDownloadButton(context, note, controller),
                   ],
                 ),
                 // Progress bar at the bottom when downloading
@@ -440,7 +377,7 @@ class NotesTab extends StatelessWidget {
                   Semantics(
                     liveRegion: true,
                     label:
-                        'Opening, ${(downloadProgress * 100).toInt()} percent',
+                        'Downloading, ${(downloadProgress * 100).toInt()} percent',
                     child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -448,7 +385,7 @@ class NotesTab extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Opening...',
+                            'Downloading...',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.primary,
                               fontWeight: FontWeight.w500,
@@ -484,6 +421,115 @@ class NotesTab extends StatelessWidget {
           ),
         ),
       ),
+      ),
+    );
+  }
+
+  Widget _buildDownloadButton(
+    BuildContext context,
+    Note note,
+    ChapterDetailController controller,
+  ) {
+    final theme = Theme.of(context);
+    final isLocked = controller.isNoteLocked(note);
+
+    if (isLocked) {
+      return Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+        child: ExcludeSemantics(
+          child: IconButton(
+            tooltip: 'Note locked',
+            onPressed: null,
+            icon: Icon(
+              Icons.lock_rounded,
+              color: theme.colorScheme.onSurfaceVariant,
+              size: 22,
+              semanticLabel: 'Locked',
+            ),
+            padding: EdgeInsets.all(12),
+          ),
+        ),
+      );
+    }
+
+    if (note.isDownloaded) {
+      return Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.secondary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: theme.colorScheme.secondary.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: Icon(
+            Icons.download_done,
+            color: theme.colorScheme.secondary,
+            size: 22,
+          ),
+        ),
+      );
+    }
+
+    if (note.isDownloading) {
+      return Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+        child: ExcludeSemantics(
+          child: IconButton(
+            tooltip: 'Downloading note',
+            onPressed: null,
+            icon: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                value: note.downloadProgress,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            padding: EdgeInsets.all(12),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: ExcludeSemantics(
+        child: IconButton(
+          tooltip: 'Download note',
+          onPressed: () => controller.downloadNote(note.id),
+          icon: Icon(
+            Icons.download_outlined,
+            color: theme.colorScheme.primary,
+            size: 22,
+            semanticLabel: 'Download',
+          ),
+          padding: EdgeInsets.all(12),
+        ),
       ),
     );
   }

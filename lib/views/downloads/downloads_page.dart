@@ -1097,12 +1097,14 @@ class _NotesTab extends StatelessWidget {
     final statusLabel = isLocked
         ? 'locked'
         : note.isDownloading
-        ? 'opening, ${(note.downloadProgress * 100).toInt()} percent'
+        ? 'downloading, ${(note.downloadProgress * 100).toInt()} percent'
         : note.isDownloaded
-        ? 'saved in app'
-        : 'available in app';
-    final semanticLabel =
-        'PDF note, ${note.title}, $statusLabel. Double tap to open in the app.';
+        ? 'downloaded'
+        : 'not downloaded';
+    final semanticAction = note.isDownloaded
+        ? 'Double tap to open in the app.'
+        : 'Use the download button to save it.';
+    final semanticLabel = 'PDF note, ${note.title}, $statusLabel. $semanticAction';
 
     return TweenAnimationBuilder<double>(
       duration: Duration(milliseconds: 300 + (index * 100)),
@@ -1131,9 +1133,9 @@ class _NotesTab extends StatelessWidget {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: isLocked || note.isDownloading
-                      ? null
-                      : () => controller.openNote(note),
+                  onTap: note.isDownloaded && !isLocked && !note.isDownloading
+                      ? () => controller.openNote(note)
+                      : null,
                   borderRadius: BorderRadius.circular(20),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -1279,10 +1281,10 @@ class _NotesTab extends StatelessWidget {
                                       isLocked
                                           ? 'LOCKED'
                                           : note.isDownloaded
-                                          ? 'SAVED IN APP'
+                                          ? 'DOWNLOADED'
                                           : note.isDownloading
-                                          ? 'OPENING'
-                                          : 'OPEN IN APP',
+                                          ? 'DOWNLOADING'
+                                          : 'NOT DOWNLOADED',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w600,
@@ -1339,18 +1341,18 @@ class _NotesTab extends StatelessWidget {
                               Semantics(
                                 liveRegion: true,
                                 label:
-                                    'Opening, ${(note.downloadProgress * 100).toInt()} percent',
+                                    'Downloading, ${(note.downloadProgress * 100).toInt()} percent',
                                 child: IconButton(
                                   onPressed: null,
-                                  tooltip: 'Opening note',
+                                  tooltip: 'Downloading note',
                                   icon: Icon(
                                     Icons.hourglass_top_rounded,
                                     color: Colors.blue,
-                                    semanticLabel: 'Opening',
+                                    semanticLabel: 'Downloading',
                                   ),
                                 ),
                               ),
-                            ] else ...[
+                            ] else if (note.isDownloaded) ...[
                               IconButton(
                                 onPressed: () => controller.openNote(note),
                                 tooltip: 'Open note in app',
@@ -1360,16 +1362,25 @@ class _NotesTab extends StatelessWidget {
                                   semanticLabel: 'Open in app',
                                 ),
                               ),
-                              if (note.isDownloaded)
-                                IconButton(
-                                  onPressed: () => controller.deleteNote(note),
-                                  tooltip: 'Remove in-app copy',
-                                  icon: const Icon(
-                                    Icons.delete_outline_rounded,
-                                    color: Colors.red,
-                                    semanticLabel: 'Remove from app',
-                                  ),
+                              IconButton(
+                                onPressed: () => controller.deleteNote(note),
+                                tooltip: 'Remove in-app copy',
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  color: Colors.red,
+                                  semanticLabel: 'Remove from app',
                                 ),
+                              ),
+                            ] else ...[
+                              IconButton(
+                                onPressed: () => controller.downloadNote(note),
+                                tooltip: 'Download note',
+                                icon: const Icon(
+                                  Icons.download_rounded,
+                                  color: Colors.green,
+                                  semanticLabel: 'Download',
+                                ),
+                              ),
                             ],
                           ],
                         ),
