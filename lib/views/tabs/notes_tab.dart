@@ -241,26 +241,26 @@ class NotesTab extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: theme
-                                      .colorScheme
-                                      .surfaceContainerHighest
-                                      .withValues(alpha: 0.5),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  note.size?.toString() ?? '0 MB',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
+                              // Container(
+                              //   padding: EdgeInsets.symmetric(
+                              //     horizontal: 8,
+                              //     vertical: 4,
+                              //   ),
+                              //   decoration: BoxDecoration(
+                              //     color: theme
+                              //         .colorScheme
+                              //         .surfaceContainerHighest
+                              //         .withValues(alpha: 0.5),
+                              //     borderRadius: BorderRadius.circular(12),
+                              //   ),
+                              //   child: Text(
+                              //     note.size?.toString() ?? '0 MB',
+                              //     style: theme.textTheme.labelSmall?.copyWith(
+                              //       color: theme.colorScheme.onSurfaceVariant,
+                              //       fontWeight: FontWeight.w500,
+                              //     ),
+                              //   ),
+                              // ),
                               if (isDownloaded && !isDownloading)
                                 Container(
                                   padding: EdgeInsets.symmetric(

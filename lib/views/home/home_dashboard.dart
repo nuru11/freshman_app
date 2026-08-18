@@ -602,10 +602,10 @@ class _CourseTile extends StatelessWidget {
             style: theme.textTheme.titleSmall,
           ),
           const SizedBox(height: 2),
-          Text(
-            chapterCount == 1 ? '1 chapter' : '$chapterCount chapters',
-            style: theme.textTheme.labelSmall?.copyWith(color: onSurfaceVariant),
-          ),
+          // Text(
+          //   chapterCount == 1 ? '1 chapter' : '$chapterCount chapters',
+          //   style: theme.textTheme.labelSmall?.copyWith(color: onSurfaceVariant),
+          // ),
         ],
       ),
     );
