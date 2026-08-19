@@ -33,6 +33,13 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
+    // fvp and flutter_pdfview (pdfium) both ship libc++_shared.so.
+    packaging {
+        jniLibs {
+            pickFirsts += "lib/**/libc++_shared.so"
+        }
+    }
+
     defaultConfig {
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
