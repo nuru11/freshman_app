@@ -338,6 +338,28 @@ class _TextModeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
+      if (controller.isExtractingText && !controller.currentPageTextReady) {
+        return Semantics(
+          liveRegion: true,
+          label: 'Preparing readable text',
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(color: theme.colorScheme.primary),
+                const SizedBox(height: 16),
+                Text(
+                  'Preparing readable text',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
       final text = controller.currentPageText.trim();
       final display = text.isEmpty
           ? 'This page has no readable text. Image-only PDFs cannot be read aloud.'
@@ -585,7 +607,18 @@ class _ListenBar extends StatelessWidget {
         label: 'Listen controls',
         child: Column(
           children: [
-            if (!controller.currentPageHasText && !controller.isExtractingText)
+            if (controller.isExtractingText && !controller.currentPageTextReady)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Preparing readable text',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              )
+            else if (controller.currentPageTextReady &&
+                !controller.currentPageHasText)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Text(

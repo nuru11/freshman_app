@@ -8,7 +8,6 @@ import 'package:vector_academy/services/services.dart';
 import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/utils/device/device.dart';
 import 'package:vector_academy/controllers/misc/downloads_controller.dart';
-import 'dart:io';
 
 class ChapterDetailController extends GetxController {
   bool _isLoading = false;
@@ -265,6 +264,8 @@ class ChapterDetailController extends GetxController {
   }
 
   /// Restores in-progress download state when navigating back to this page.
+  /// Also copies completed local paths from DownloadsController so a list
+  /// reload cannot drop filePath after a download just finished.
   void _syncActiveDownloads() {
     for (final v in _videos) {
       final progress = _downloadsController.activeVideoDownloads[v.id];
@@ -280,6 +281,13 @@ class ChapterDetailController extends GetxController {
           v.downloadProgress = paused;
         }
       }
+      final mirror = _downloadsController.allVideos.firstWhereOrNull(
+        (x) => x.id == v.id,
+      );
+      if (mirror != null && hasDownloadedVideoFile(mirror)) {
+        v.isDownloaded = true;
+        v.filePath = mirror.filePath;
+      }
     }
     for (final n in _notes) {
       final progress = _downloadsController.activeNoteDownloads[n.id];
@@ -290,6 +298,13 @@ class ChapterDetailController extends GetxController {
           'progress': progress,
           'isDownloading': true,
         };
+      }
+      final mirror = _downloadsController.allNotes.firstWhereOrNull(
+        (x) => x.id == n.id,
+      );
+      if (mirror != null && hasDownloadedNoteFile(mirror)) {
+        n.isDownloaded = true;
+        n.filePath = mirror.filePath;
       }
     }
   }
@@ -444,10 +459,8 @@ class ChapterDetailController extends GetxController {
           _showLockedContentMessage();
           return;
         }
-        // Check if video is downloaded
-        if (!video.isDownloaded ||
-            video.filePath == null ||
-            video.filePath!.isEmpty) {
+        await hydrateVideoDownloadState(video);
+        if (!hasDownloadedVideoFile(video)) {
           AppSnackbar.showWarning(
             'Video Not Available',
             'This video needs to be downloaded first to watch offline',
@@ -456,35 +469,15 @@ class ChapterDetailController extends GetxController {
           return;
         }
 
-        // Check if the file actually exists
-        final file = File(video.filePath!);
-        if (!await file.exists()) {
-          AppSnackbar.showError(
-            'File Not Found',
-            'The downloaded video file could not be found. Please download again.',
-            duration: const Duration(seconds: 3),
-          );
-
-          // Reset download status
-          video.isDownloaded = false;
-          video.filePath = null;
-          update();
-          return;
-        }
-
-        // Use local file path for downloaded videos
         logger.d('Playing video from: ${video.filePath}');
 
-        if (video.filePath != null) {
-          logger.f('Playing video from: ${video.filePath}');
-          Get.to(
-            VideoPlayerScreen(
-              videoId: video.id,
-              videoUrl: video.filePath!, // Use local file path
-              videoTitle: video.title,
-            ),
-          );
-        }
+        Get.to(
+          VideoPlayerScreen(
+            videoId: video.id,
+            videoUrl: video.filePath!,
+            videoTitle: video.title,
+          ),
+        );
       } else {
         AppSnackbar.showError('Error', 'Video not found');
       }
@@ -506,14 +499,6 @@ class ChapterDetailController extends GetxController {
       }
       if (isNoteLocked(note)) {
         _showLockedContentMessage();
-        return;
-      }
-      if (!note.isDownloaded || !hasDownloadedNoteFile(note)) {
-        AppSnackbar.showWarning(
-          'Note Not Available',
-          'This note needs to be downloaded first',
-          duration: const Duration(seconds: 3),
-        );
         return;
       }
       _downloadsController.openNote(note);

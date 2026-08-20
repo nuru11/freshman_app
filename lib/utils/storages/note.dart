@@ -1,5 +1,6 @@
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/utils/storages/base.dart';
+import 'package:vector_academy/utils/offline_content_access.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class HiveNoteStorage extends BaseObjectStorage<List<Note>> {
@@ -47,41 +48,24 @@ class HiveNoteStorage extends BaseObjectStorage<List<Note>> {
 
   Future<List<Note>> getNotes(int chapterId) async {
     final value = _box.get('notes_$chapterId') ?? [];
-
+    final list = value.cast<Note>();
     final downloadedNotes = await getDownloadedNotes();
-    for (var note in value) {
-      final downloadedNote = downloadedNotes.firstWhere(
-        (element) => element['id'] == note.id,
-        orElse: () => {},
-      );
-      note.filePath = downloadedNote['file_path'];
-      if (note.filePath != null) {
-        note.isDownloaded = true;
-      }
-    }
-
-    return value.cast<Note>();
+    await hydrateNoteListDownloadState(list, downloadedNotes);
+    return list;
   }
 
   Future<List<Note>> getAllNotes() async {
     final value = _box.get('notes') ?? [];
+    final list = value.cast<Note>();
     final downloadedNotes = await getDownloadedNotes();
-    for (var note in value) {
-      final downloadedNote = downloadedNotes.firstWhere(
-        (element) => element['id'] == note.id,
-        orElse: () => {},
-      );
-      note.filePath = downloadedNote['file_path'];
-      if (note.filePath != null) {
-        note.isDownloaded = true;
-      }
-    }
-    return value.cast<Note>();
+    await hydrateNoteListDownloadState(list, downloadedNotes);
+    return list;
   }
 
   // Add these new methods for downloaded notes
   Future<void> addDownloadedNote(int id, String filePath) async {
-    final notes = _box.get('downloaded_notes') ?? [];
+    final notes = List<dynamic>.from(_box.get('downloaded_notes') ?? []);
+    notes.removeWhere((element) => downloadedEntryHasId(element, id));
     notes.add({'id': id, 'file_path': filePath});
     _box.put('downloaded_notes', notes);
   }
@@ -99,8 +83,8 @@ class HiveNoteStorage extends BaseObjectStorage<List<Note>> {
   }
 
   Future<void> removeDownloadedNote(int id) async {
-    final notes = _box.get('downloaded_notes') ?? [];
-    notes.removeWhere((element) => element['id'] == id);
+    final notes = List<dynamic>.from(_box.get('downloaded_notes') ?? []);
+    notes.removeWhere((element) => downloadedEntryHasId(element, id));
     _box.put('downloaded_notes', notes);
   }
 

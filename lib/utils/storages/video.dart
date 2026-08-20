@@ -1,5 +1,6 @@
 import 'package:vector_academy/utils/storages/base.dart';
 import 'package:vector_academy/models/models.dart';
+import 'package:vector_academy/utils/offline_content_access.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class HiveVideoStorage extends BaseObjectStorage<List<Video>> {
@@ -43,18 +44,10 @@ class HiveVideoStorage extends BaseObjectStorage<List<Video>> {
 
   Future<List<Video>> getAllVideos() async {
     final videos = _box?.get('videos') ?? [];
+    final list = videos.cast<Video>();
     final downloadedVideos = await getDownloadedVideos();
-    for (var video in videos) {
-      final downloadedVideo = downloadedVideos.firstWhere(
-        (element) => element['id'] == video.id,
-        orElse: () => {},
-      );
-      video.filePath = downloadedVideo['file_path'];
-      if (video.filePath != null) {
-        video.isDownloaded = true;
-      }
-    }
-    return videos.cast<Video>();
+    await hydrateVideoListDownloadState(list, downloadedVideos);
+    return list;
   }
 
   Future<void> setAllVideos(List<Video> videos) async {
@@ -64,18 +57,8 @@ class HiveVideoStorage extends BaseObjectStorage<List<Video>> {
   Future<List<Video>> getVideos(int chapterId) async {
     final videos = await read('videos_$chapterId');
     final downloadedVideos = await getDownloadedVideos();
-
-    for (var video in videos) {
-      final downloadedVideo = downloadedVideos.firstWhere(
-        (element) => element['id'] == video.id,
-        orElse: () => {},
-      );
-      video.filePath = downloadedVideo['file_path'];
-      if (video.filePath != null) {
-        video.isDownloaded = true;
-      }
-    }
-    return videos.cast<Video>();
+    await hydrateVideoListDownloadState(videos, downloadedVideos);
+    return videos;
   }
 
   Future<List<Map<String, dynamic>>> getDownloadedVideos() async {
@@ -90,14 +73,15 @@ class HiveVideoStorage extends BaseObjectStorage<List<Video>> {
   }
 
   Future<void> addDownloadedVideo(int id, String filePath) async {
-    final videos = _box?.get('downloaded_videos') ?? [];
+    final videos = List<dynamic>.from(_box?.get('downloaded_videos') ?? []);
+    videos.removeWhere((element) => downloadedEntryHasId(element, id));
     videos.add({'id': id, 'file_path': filePath});
     _box?.put('downloaded_videos', videos);
   }
 
   Future<void> removeDownloadedVideo(int id) async {
-    final videos = _box?.get('downloaded_videos') ?? [];
-    videos.removeWhere((element) => element['id'] == id);
+    final videos = List<dynamic>.from(_box?.get('downloaded_videos') ?? []);
+    videos.removeWhere((element) => downloadedEntryHasId(element, id));
     _box?.put('downloaded_videos', videos);
   }
 

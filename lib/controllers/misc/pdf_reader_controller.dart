@@ -47,6 +47,11 @@ class PDFReaderController extends GetxController {
   String? _sessionUrl;
   bool _listenSessionActive = false;
   bool _restartingSpeech = false;
+  PdfDocument? _listenDocument;
+  PdfTextExtractor? _extractor;
+  Future<void> _extractChain = Future.value();
+  final List<bool> _pageExtracted = [];
+  bool _remainingQueued = false;
 
   static const List<double> _speechRates = [0.35, 0.5, 0.7];
   static const List<String> _speechRateLabels = ['Slow', 'Normal', 'Fast'];
@@ -84,6 +89,11 @@ class PDFReaderController extends GetxController {
 
   bool get currentPageHasText => currentPageText.trim().isNotEmpty;
 
+  bool get currentPageTextReady {
+    final i = _currentPage.value;
+    return i >= 0 && i < _pageExtracted.length && _pageExtracted[i];
+  }
+
   String get pageStatusLabel {
     if (totalPages <= 0) return pdfTitle;
     return '$pdfTitle, PDF, page ${currentPage + 1} of $totalPages. Play to listen';
@@ -116,6 +126,11 @@ class PDFReaderController extends GetxController {
     _totalPages.value = 0;
     _isReady.value = false;
     _pageTexts.clear();
+    _pageExtracted.clear();
+    _remainingQueued = false;
+    _extractChain = Future.value();
+    _disposeListenDocument();
+    _isExtractingText.value = false;
     _isTextMode.value = false;
     _stopListenInternal();
     _setupOrientations();
@@ -181,7 +196,7 @@ class PDFReaderController extends GetxController {
     }
 
     if (_isLocalFile(pdfUrl)) {
-      _handleLocalFile();
+      await _handleLocalFile();
     } else {
       if (protectContent) {
         _setError('This PDF could not be opened. Please try again.');
@@ -197,7 +212,7 @@ class PDFReaderController extends GetxController {
         (url.contains(':') && !url.startsWith('http'));
   }
 
-  void _handleLocalFile() {
+  Future<void> _handleLocalFile() async {
     try {
       _setLoading(true);
       _clearError();
@@ -207,12 +222,19 @@ class PDFReaderController extends GetxController {
         filePath = filePath.substring(7);
       }
 
+      if (protectContent) {
+        filePath = await NoteFileCache.instance.prepareViewFile(
+          pdfId,
+          storedPath: filePath,
+        );
+        if (_closed) return;
+      }
+
       final file = File(filePath);
       if (file.existsSync()) {
         _localPath.value = filePath;
         _setLoading(false);
         _announce('Opening $pdfTitle');
-        _extractPageText();
       } else {
         logger.e('Local PDF file not found');
         _setLoading(false);
@@ -245,7 +267,6 @@ class PDFReaderController extends GetxController {
           _localPath.value = filePath;
           _isDownloading.value = false;
           _setLoading(false);
-          _extractPageText();
         } else {
           throw Exception('Downloaded file is empty');
         }
@@ -260,30 +281,92 @@ class PDFReaderController extends GetxController {
     }
   }
 
-  Future<void> _extractPageText() async {
-    if (!enableListen || _localPath.value.isEmpty) return;
-    _isExtractingText.value = true;
+  void _disposeListenDocument() {
     try {
-      final bytes = await File(_localPath.value).readAsBytes();
-      final document = PdfDocument(inputBytes: bytes);
-      final extractor = PdfTextExtractor(document);
-      final pages = <String>[];
-      for (var i = 0; i < document.pages.count; i++) {
-        final text = extractor
-            .extractText(startPageIndex: i, endPageIndex: i)
-            .trim();
-        pages.add(text);
+      _listenDocument?.dispose();
+    } catch (_) {}
+    _listenDocument = null;
+    _extractor = null;
+  }
+
+  void _ensurePageTextCapacity() {
+    final count = _totalPages.value;
+    if (count <= 0) return;
+    while (_pageTexts.length < count) {
+      _pageTexts.add('');
+    }
+    while (_pageExtracted.length < count) {
+      _pageExtracted.add(false);
+    }
+  }
+
+  Future<void> _ensurePageText(int pageIndex) {
+    final next = _extractChain.then((_) => _extractOnePage(pageIndex));
+    _extractChain = next.catchError((e, _) {
+      logger.e('PDF text extract queue failed: $e');
+    });
+    return next;
+  }
+
+  Future<void> _extractOnePage(int pageIndex) async {
+    if (!enableListen || _closed || _localPath.value.isEmpty) {
+      _isExtractingText.value = false;
+      return;
+    }
+
+    final isCurrent = pageIndex == _currentPage.value;
+    if (isCurrent) _isExtractingText.value = true;
+    try {
+      if (_listenDocument == null) {
+        final bytes = await File(_localPath.value).readAsBytes();
+        if (_closed) return;
+        _listenDocument = PdfDocument(inputBytes: bytes);
+        _extractor = PdfTextExtractor(_listenDocument!);
+        final count = _listenDocument!.pages.count;
+        if (_totalPages.value <= 0) {
+          _totalPages.value = count;
+        }
       }
-      document.dispose();
+
+      _ensurePageTextCapacity();
+      if (pageIndex < 0 || pageIndex >= _pageTexts.length) return;
+      if (_pageExtracted[pageIndex]) return;
+
+      final text = _extractor!
+          .extractText(startPageIndex: pageIndex, endPageIndex: pageIndex)
+          .trim();
       if (_closed) return;
-      _pageTexts.assignAll(pages);
-      _announce(pageStatusLabel);
+      _pageTexts[pageIndex] = text;
+      _pageExtracted[pageIndex] = true;
+      _pageTexts.refresh();
     } catch (e) {
       logger.e('Failed to extract PDF text: $e');
-      _pageTexts.clear();
+      _ensurePageTextCapacity();
+      if (pageIndex >= 0 && pageIndex < _pageExtracted.length) {
+        _pageExtracted[pageIndex] = true;
+        _pageTexts.refresh();
+      }
     } finally {
-      _isExtractingText.value = false;
+      if (isCurrent) _isExtractingText.value = false;
     }
+  }
+
+  void _extractRemainingPagesInBackground() {
+    if (_remainingQueued || !enableListen) return;
+    _remainingQueued = true;
+    _extractChain = _extractChain.then((_) async {
+      final count = _pageExtracted.isNotEmpty
+          ? _pageExtracted.length
+          : _totalPages.value;
+      for (var i = 0; i < count; i++) {
+        if (_closed) return;
+        await _extractOnePage(i);
+        await Future<void>.delayed(Duration.zero);
+      }
+      _disposeListenDocument();
+    }).catchError((e, _) {
+      logger.e('Background PDF text extract failed: $e');
+    });
   }
 
   void _announce(String message) {
@@ -292,9 +375,16 @@ class PDFReaderController extends GetxController {
 
   void onPageChanged(int? page, int? total) {
     if (page != null) _currentPage.value = page;
-    if (total != null) _totalPages.value = total;
+    if (total != null) {
+      _totalPages.value = total;
+      _ensurePageTextCapacity();
+    }
     if (isReady && totalPages > 0) {
       _announce('Page ${currentPage + 1} of $totalPages');
+    }
+    if (enableListen && _isTextMode.value) {
+      if (!currentPageTextReady) _isExtractingText.value = true;
+      _ensurePageText(_currentPage.value);
     }
   }
 
@@ -307,7 +397,10 @@ class PDFReaderController extends GetxController {
   }
 
   void onRender(int? pages) {
-    if (pages != null) _totalPages.value = pages;
+    if (pages != null) {
+      _totalPages.value = pages;
+      _ensurePageTextCapacity();
+    }
     if (isReady && totalPages > 0) {
       _announce(pageStatusLabel);
     }
@@ -347,9 +440,14 @@ class PDFReaderController extends GetxController {
     }
   }
 
-  void toggleTextMode() {
+  Future<void> toggleTextMode() async {
     _isTextMode.value = !_isTextMode.value;
     _announce(_isTextMode.value ? 'Text mode on' : 'Text mode off');
+    if (_isTextMode.value) {
+      if (!currentPageTextReady) _isExtractingText.value = true;
+      await _ensurePageText(_currentPage.value);
+      _extractRemainingPagesInBackground();
+    }
   }
 
   Future<void> toggleListen() async {
@@ -362,6 +460,10 @@ class PDFReaderController extends GetxController {
 
   Future<void> speakCurrentPage() async {
     if (!enableListen) return;
+    if (!currentPageTextReady) _isExtractingText.value = true;
+    await _ensurePageText(_currentPage.value);
+    _extractRemainingPagesInBackground();
+    if (_closed) return;
     final text = currentPageText.trim();
     _listenSessionActive = true;
     _isListenPaused.value = false;
@@ -686,6 +788,7 @@ class PDFReaderController extends GetxController {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _hintTimer?.cancel();
     _pdfViewController = null;
+    _disposeListenDocument();
     _clearScreenProtection();
     if (protectContent) {
       NoteFileCache.instance.deleteViewFile(pdfId);

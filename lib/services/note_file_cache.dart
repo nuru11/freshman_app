@@ -1,9 +1,18 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:encrypt/encrypt.dart' as enc;
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:vector_academy/utils/utils.dart';
+
+List<int> _decryptNoteBytes(Map<String, List<int>> args) {
+  final key = enc.Key(Uint8List.fromList(args['key']!));
+  final data = args['data']!;
+  final iv = enc.IV(Uint8List.fromList(data.sublist(0, 16)));
+  final cipher = enc.Encrypted(Uint8List.fromList(data.sublist(16)));
+  final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
+  return encrypter.decryptBytes(cipher, iv: iv);
+}
 
 /// Private encrypted on-disk cache for PDF notes.
 ///
@@ -86,6 +95,12 @@ class NoteFileCache {
 
   /// Decrypts the cached note to a temp PDF for the in-app reader.
   Future<String> prepareViewFile(int noteId, {String? storedPath}) async {
+    final viewPath = await viewFilePath(noteId);
+    final viewFile = File(viewPath);
+    if (await viewFile.exists() && await viewFile.length() > 0) {
+      return viewPath;
+    }
+
     var encryptedPath = await cacheFilePath(noteId);
     var encryptedFile = File(encryptedPath);
 
@@ -119,13 +134,11 @@ class NoteFileCache {
     }
 
     final key = await _aesKey();
-    final iv = enc.IV(Uint8List.fromList(data.sublist(0, 16)));
-    final cipher = enc.Encrypted(Uint8List.fromList(data.sublist(16)));
-    final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
-    final decrypted = encrypter.decryptBytes(cipher, iv: iv);
+    final decrypted = await compute(_decryptNoteBytes, <String, List<int>>{
+      'key': key.bytes,
+      'data': data,
+    });
 
-    final viewPath = await viewFilePath(noteId);
-    final viewFile = File(viewPath);
     await viewFile.writeAsBytes(Uint8List.fromList(decrypted), flush: true);
     return viewPath;
   }
