@@ -60,39 +60,33 @@ class ChapterDetailController extends GetxController {
       hasFullAccessOverrideForPhone(_user?.phoneNumber);
 
   bool isVideoLocked(Video video) {
-    // App Store review: treat content as free (uncomment block to restore)
-    return false;
-    // if (_hasFullAccessOverride || _isPreviewChapterAccess) {
-    //   return false;
-    // }
-    // if (hasDownloadedVideoFile(video)) {
-    //   return false;
-    // }
-    // return video.isLocked;
+    if (_hasFullAccessOverride || _isPreviewChapterAccess) {
+      return false;
+    }
+    if (hasDownloadedVideoFile(video)) {
+      return false;
+    }
+    return video.isLocked;
   }
 
   bool isQuizLocked(Exam quiz) {
-    // App Store review: treat content as free (uncomment block to restore)
-    return false;
-    // if (_hasFullAccessOverride || _isPreviewChapterAccess) {
-    //   return false;
-    // }
-    // if (hasDownloadedExamContent(quiz)) {
-    //   return false;
-    // }
-    // return quiz.isLocked;
+    if (_hasFullAccessOverride || _isPreviewChapterAccess) {
+      return false;
+    }
+    if (hasDownloadedExamContent(quiz)) {
+      return false;
+    }
+    return quiz.isLocked;
   }
 
   bool isNoteLocked(Note note) {
-    // App Store review: treat content as free (uncomment block to restore)
-    return false;
-    // if (_hasFullAccessOverride || _isPreviewChapterAccess) {
-    //   return false;
-    // }
-    // if (hasDownloadedNoteFile(note)) {
-    //   return false;
-    // }
-    // return note.isLocked;
+    if (_hasFullAccessOverride || _isPreviewChapterAccess) {
+      return false;
+    }
+    if (hasDownloadedNoteFile(note)) {
+      return false;
+    }
+    return note.isLocked;
   }
 
   void _showLockedContentMessage() {
@@ -110,17 +104,16 @@ class ChapterDetailController extends GetxController {
 
     final canAccessChapter = await _canAccessCurrentChapter();
     if (!canAccessChapter) {
-      // App Store: hide payment redirect (uncomment to restore)
-      // Get.offNamed(
-      //   VIEWS.payments.path,
-      //   arguments: {'subjectId': subjectId},
-      // );
-      // AppSnackbar.showInfo(
-      //   'Subscription Required',
-      //   'Subscribe to unlock all chapters for this subject.',
-      // );
-      // super.onInit();
-      // return;
+      Get.offNamed(
+        VIEWS.payments.path,
+        arguments: {'subjectId': subjectId},
+      );
+      AppSnackbar.showInfo(
+        'Subscription Required',
+        'Subscribe to unlock all chapters for this subject.',
+      );
+      super.onInit();
+      return;
     }
 
     _registerDownloadCallbacks();
@@ -428,12 +421,10 @@ class ChapterDetailController extends GetxController {
         }
       }
 
-      // _isSubjectLocked = (subject?.isLocked ?? true) && !_hasFullAccessOverride;
-      _isSubjectLocked = false; // App Store review: treat content as free
+      _isSubjectLocked = (subject?.isLocked ?? true) && !_hasFullAccessOverride;
       _chapter = subject?.chapters.firstWhereOrNull((ch) => ch.id == chapterId);
-      // _isPreviewChapterAccess = _hasFullAccessOverride ||
-      //     (_isSubjectLocked && ((_chapter?.chapterNumber ?? 0) == 1));
-      _isPreviewChapterAccess = true; // App Store review: treat content as free
+      _isPreviewChapterAccess = _hasFullAccessOverride ||
+          (_isSubjectLocked && ((_chapter?.chapterNumber ?? 0) == 1));
 
       if (_chapter != null) {
         _chapterTitle = _chapter!.name;

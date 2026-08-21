@@ -56,39 +56,33 @@ class DownloadsController extends GetxController {
       hasFullAccessOverrideForPhone(_user?.phoneNumber);
 
   bool isVideoLocked(Video video) {
-    // App Store review: treat content as free (uncomment block to restore)
-    return false;
-    // if (hasFullAccessOverride) {
-    //   return false;
-    // }
-    // if (hasDownloadedVideoFile(video)) {
-    //   return false;
-    // }
-    // return video.isLocked;
+    if (hasFullAccessOverride) {
+      return false;
+    }
+    if (hasDownloadedVideoFile(video)) {
+      return false;
+    }
+    return video.isLocked;
   }
 
   bool isNoteLocked(Note note) {
-    // App Store review: treat content as free (uncomment block to restore)
-    return false;
-    // if (hasFullAccessOverride) {
-    //   return false;
-    // }
-    // if (hasDownloadedNoteFile(note)) {
-    //   return false;
-    // }
-    // return note.isLocked;
+    if (hasFullAccessOverride) {
+      return false;
+    }
+    if (hasDownloadedNoteFile(note)) {
+      return false;
+    }
+    return note.isLocked;
   }
 
   bool isExamLocked(Exam exam) {
-    // App Store review: treat content as free (uncomment block to restore)
-    return false;
-    // if (hasFullAccessOverride) {
-    //   return false;
-    // }
-    // if (hasDownloadedExamContent(exam)) {
-    //   return false;
-    // }
-    // return exam.isLocked;
+    if (hasFullAccessOverride) {
+      return false;
+    }
+    if (hasDownloadedExamContent(exam)) {
+      return false;
+    }
+    return exam.isLocked;
   }
 
   @override

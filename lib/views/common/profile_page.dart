@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/controllers/controllers.dart';
 import 'package:vector_academy/utils/navigation_utils.dart';
-// import 'package:vector_academy/views/views.dart'; // App Store: agent UI commented
+import 'package:vector_academy/views/views.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -153,24 +153,23 @@ class ProfilePage extends StatelessWidget {
 
           SizedBox(height: 40),
 
-          // App Store: hide agent UI (uncomment to restore)
-          // Text(
-          //   'Become an Agent',
-          //   style: TextStyle(
-          //     fontSize: 20,
-          //     fontWeight: FontWeight.bold,
-          //     color: Colors.grey[800],
-          //   ),
-          // ),
-          // SizedBox(height: 20),
-          // _buildActionButton(
-          //   context,
-          //   Icons.business_center,
-          //   "Agent Program",
-          //   "Apply to become an agent and earn coins",
-          //   () => Get.toNamed(VIEWS.agentStatus.path),
-          // ),
-          // SizedBox(height: 40),
+          Text(
+            'Become an Agent',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
+          ),
+          SizedBox(height: 20),
+          _buildActionButton(
+            context,
+            Icons.business_center,
+            "Agent Program",
+            "Apply to become an agent and earn coins",
+            () => Get.toNamed(VIEWS.agentStatus.path),
+          ),
+          SizedBox(height: 40),
 
           // Action Buttons
           Text(

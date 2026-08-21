@@ -70,9 +70,7 @@ class SubjectController extends GetxController {
   }
 
   bool isSubjectLocked(Subject subject) {
-    // App Store review: treat content as free (uncomment to restore)
-    return false;
-    // return subject.isLocked && !hasFullAccessOverride;
+    return subject.isLocked && !hasFullAccessOverride;
   }
 
   @override
