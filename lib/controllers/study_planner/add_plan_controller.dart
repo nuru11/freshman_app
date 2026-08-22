@@ -273,16 +273,13 @@ class AddPlanController extends GetxController {
 
       if (plan != null) {
         // Update existing plan
-        final updatedPlan = StudyPlan(
-          id: plan!.id,
+        final updatedPlan = plan!.copyWith(
           title: titleController.text.trim(),
           description: descriptionController.text.trim(),
           subject: subject,
           dueDate: dueDate,
           startDate: startDate,
           endDate: endDate,
-          completedDates: plan!.completedDates, // Preserve existing completions
-          createdAt: plan!.createdAt,
           repeatDays: selectedDays.toList()..sort(),
         );
         logger.d('update existing plan');

@@ -11,11 +11,13 @@ User _$UserFromJson(Map<String, dynamic> json) => User(
   firstName: json['first_name'] as String,
   lastName: json['last_name'] as String?,
   phoneNumber: json['phone_number'] as String,
-  isPhoneVerified: json['is_phone_verified'] as bool,
+  isPhoneVerified: json['is_phone_verified'] as bool? ?? false,
   profilePic: json['profile_pic'] as String?,
   grade: Grade.fromJson(json['grade'] as Map<String, dynamic>),
   createdAt: json['created_at'] as String,
   updatedAt: json['updated_at'] as String,
+  isPremium: json['is_premium'] as bool? ?? false,
+  telegramHandle: json['telegram_handle'] as String?,
 );
 
 Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
@@ -28,6 +30,8 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
   'grade': instance.grade,
   'created_at': instance.createdAt,
   'updated_at': instance.updatedAt,
+  'is_premium': instance.isPremium,
+  'telegram_handle': instance.telegramHandle,
 };
 
 AuthResponse _$AuthResponseFromJson(Map<String, dynamic> json) => AuthResponse(

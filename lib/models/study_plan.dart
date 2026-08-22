@@ -4,6 +4,56 @@ import 'package:hive_flutter/hive_flutter.dart';
 part 'study_plan.g.dart';
 
 @JsonSerializable()
+class StudyPlanAlarm {
+  final String id;
+  @JsonKey(name: 'offset_minutes')
+  final int offsetMinutes;
+  final String sound;
+  final String vibration;
+  @JsonKey(name: 'snooze_minutes')
+  final int snoozeMinutes;
+  final bool enabled;
+
+  const StudyPlanAlarm({
+    required this.id,
+    this.offsetMinutes = 15,
+    this.sound = 'default',
+    this.vibration = 'default',
+    this.snoozeMinutes = 5,
+    this.enabled = true,
+  });
+
+  factory StudyPlanAlarm.fromJson(Map<String, dynamic> json) =>
+      _$StudyPlanAlarmFromJson(json);
+  Map<String, dynamic> toJson() => _$StudyPlanAlarmToJson(this);
+
+  StudyPlanAlarm copyWith({
+    String? id,
+    int? offsetMinutes,
+    String? sound,
+    String? vibration,
+    int? snoozeMinutes,
+    bool? enabled,
+  }) {
+    return StudyPlanAlarm(
+      id: id ?? this.id,
+      offsetMinutes: offsetMinutes ?? this.offsetMinutes,
+      sound: sound ?? this.sound,
+      vibration: vibration ?? this.vibration,
+      snoozeMinutes: snoozeMinutes ?? this.snoozeMinutes,
+      enabled: enabled ?? this.enabled,
+    );
+  }
+
+  static StudyPlanAlarm defaultAlarm() {
+    return StudyPlanAlarm(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      offsetMinutes: 15,
+    );
+  }
+}
+
+@JsonSerializable()
 class StudyPlan {
   final int id;
   final String title;
@@ -21,6 +71,9 @@ class StudyPlan {
   final DateTime createdAt;
   @JsonKey(name: 'repeat_days')
   final List<int> repeatDays; // Days of week (1=Monday, 7=Sunday)
+  @JsonKey(name: 'alarms_enabled')
+  final bool alarmsEnabled;
+  final List<StudyPlanAlarm> alarms;
 
   StudyPlan({
     required this.id,
@@ -33,6 +86,8 @@ class StudyPlan {
     this.completedDates = const [],
     required this.createdAt,
     this.repeatDays = const [],
+    this.alarmsEnabled = true,
+    this.alarms = const [],
   });
 
   bool get isRepeating => repeatDays.isNotEmpty;
@@ -58,6 +113,36 @@ class StudyPlan {
 
   // Get the effective date for filtering/sorting (uses startDate, endDate, or dueDate)
   DateTime? get effectiveDate => startDate;
+
+  StudyPlan copyWith({
+    int? id,
+    String? title,
+    String? description,
+    String? subject,
+    DateTime? dueDate,
+    DateTime? startDate,
+    DateTime? endDate,
+    List<String>? completedDates,
+    DateTime? createdAt,
+    List<int>? repeatDays,
+    bool? alarmsEnabled,
+    List<StudyPlanAlarm>? alarms,
+  }) {
+    return StudyPlan(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      subject: subject ?? this.subject,
+      dueDate: dueDate ?? this.dueDate,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      completedDates: completedDates ?? this.completedDates,
+      createdAt: createdAt ?? this.createdAt,
+      repeatDays: repeatDays ?? this.repeatDays,
+      alarmsEnabled: alarmsEnabled ?? this.alarmsEnabled,
+      alarms: alarms ?? this.alarms,
+    );
+  }
 
   Map<String, dynamic> toJson() => _$StudyPlanToJson(this);
 

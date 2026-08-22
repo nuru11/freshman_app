@@ -21,3 +21,7 @@ export 'api/success_stories.dart';
 export 'api/user_results.dart';
 export 'deep_link_service.dart';
 export 'notification_service.dart';
+export 'premium_service.dart';
+export 'pomodoro_service.dart';
+export 'api/reading_plan.dart';
+export 'api/reading_challenge.dart';

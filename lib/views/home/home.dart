@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:vector_academy/views/home/home_dashboard.dart';
 import 'package:vector_academy/views/subject/subject_page.dart';
 import 'package:vector_academy/views/exam/exam_page.dart';
-import 'package:vector_academy/views/study_planner/study_planner_page.dart';
+import 'package:vector_academy/views/study_hub/study_hub_page.dart';
 import 'package:vector_academy/views/common/profile_page.dart';
 import 'package:vector_academy/controllers/controllers.dart';
 import 'package:vector_academy/config/app_config.dart';
@@ -18,7 +18,7 @@ class Home extends StatelessWidget {
       HomeDashboard(),
       const SubjectPage(embeddedInTab: true),
       const ExamPage(),
-      const StudyPlannerPage(),
+      const StudyHubPage(),
       const ProfilePage(embeddedInTab: true),
     ];
 
@@ -50,7 +50,7 @@ class Home extends StatelessWidget {
               const NavigationDestination(
                 icon: Icon(Icons.event_note_outlined),
                 selectedIcon: Icon(Icons.event_note_rounded),
-                label: 'Planner',
+                label: 'Study',
               ),
               const NavigationDestination(
                 icon: Icon(Icons.person_outline),

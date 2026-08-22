@@ -11,6 +11,13 @@ class LocalNotificationService extends GetxService {
   static const String channelKey = 'study_plans_channel';
   static const String channelName = 'Study Plans';
   static const String channelDescription = 'Notifications for your study plans';
+  static const String pomodoroChannelKey = 'pomodoro_channel';
+  static const String challengeChannelKey = 'challenge_channel';
+
+  static const int _planIdBase = 200000;
+  static const int _pomodoroWorkId = 900001;
+  static const int _pomodoroGapId = 900002;
+  static const int _challengeIdBase = 800000;
 
   @override
   void onInit() {
@@ -34,11 +41,40 @@ class LocalNotificationService extends GetxService {
           playSound: true,
           enableVibration: true,
           enableLights: true,
+          defaultRingtoneType: DefaultRingtoneType.Notification,
+        ),
+        NotificationChannel(
+          channelKey: '${channelKey}_alarm',
+          channelName: 'Study Plan Alarms',
+          channelDescription: 'Alarm-style reminders for study plans',
+          defaultColor: const Color(0xFF9D50DD),
+          importance: NotificationImportance.Max,
+          playSound: true,
+          enableVibration: true,
+          defaultRingtoneType: DefaultRingtoneType.Alarm,
+        ),
+        NotificationChannel(
+          channelKey: pomodoroChannelKey,
+          channelName: 'Pomodoro',
+          channelDescription: 'Pomodoro work and break alerts',
+          defaultColor: const Color(0xFF0B5F56),
+          importance: NotificationImportance.Max,
+          playSound: true,
+          enableVibration: true,
+          defaultRingtoneType: DefaultRingtoneType.Alarm,
+        ),
+        NotificationChannel(
+          channelKey: challengeChannelKey,
+          channelName: 'Reading Challenges',
+          channelDescription: 'Daily reminders for reading challenges',
+          defaultColor: const Color(0xFFC48A1A),
+          importance: NotificationImportance.High,
+          playSound: true,
+          enableVibration: true,
         ),
       ],
     );
 
-    // Set up notification action listeners
     AwesomeNotifications().setListeners(
       onActionReceivedMethod: _onNotificationActionReceived,
       onNotificationCreatedMethod: _onNotificationCreated,
@@ -47,8 +83,6 @@ class LocalNotificationService extends GetxService {
     );
   }
 
-  /// Request notification permission only (system dialog on Android 13+).
-  /// Does not open app settings or request exact alarms.
   Future<bool> ensureNotificationPermission() async {
     try {
       final isAllowed = await AwesomeNotifications()
@@ -66,8 +100,6 @@ class LocalNotificationService extends GetxService {
     }
   }
 
-  /// Request [SCHEDULE_EXACT_ALARM] on Android (may open system settings).
-  /// Call only after an in-app rationale; not chained from [ensureNotificationPermission].
   Future<void> requestExactAlarmPermission() async {
     if (!Platform.isAndroid) return;
     try {
@@ -101,7 +133,6 @@ class LocalNotificationService extends GetxService {
     }
   }
 
-  /// Check if notifications are allowed
   Future<bool> isNotificationAllowed() async {
     try {
       return await AwesomeNotifications().isNotificationAllowed();
@@ -111,45 +142,41 @@ class LocalNotificationService extends GetxService {
     }
   }
 
-  /// Schedule a notification for a study plan
+  String _channelForSound(String sound) {
+    if (sound == 'alarm') return '${channelKey}_alarm';
+    return channelKey;
+  }
+
+  int _notificationId(int planId, int alarmIndex, [int weekday = 0]) {
+    return _planIdBase + planId * 80 + alarmIndex * 8 + weekday;
+  }
+
   Future<void> scheduleStudyPlanNotification(StudyPlan plan) async {
     try {
-      // Cancel any existing notifications for this plan
       await cancelStudyPlanNotifications(plan.id);
 
-      // If plan has no start date or end date, don't schedule
       if (plan.startDate == null) {
         logger.d('Plan ${plan.id} has no date, skipping notification');
         return;
       }
 
-      if (plan.isRepeating && plan.repeatDays.isNotEmpty) {
-        // For repeating schedules, use only the time from startDate
-        final startTime = plan.startDate;
-        if (startTime == null) {
-          logger.d('Plan ${plan.id} has no start time for repeating schedule');
-          return;
-        }
-        // Extract time only (hour and minute) and schedule repeating notifications
-        await _scheduleRepeatingNotification(plan, startTime);
-      } else {
-        // For one-time schedules, use the full date+time
-        final notificationDate = plan.dueDate ?? plan.startDate ?? plan.endDate;
-        if (notificationDate == null) return;
+      if (!plan.alarmsEnabled) {
+        logger.d('Plan ${plan.id} alarms disabled');
+        return;
+      }
 
-        // Don't schedule notifications for past dates
-        if (notificationDate.isBefore(DateTime.now())) {
-          logger.d(
-            'Plan ${plan.id} date is in the past, skipping notification',
-          );
-          return;
-        }
+      final alarms = plan.alarms.isEmpty
+          ? [StudyPlanAlarm.defaultAlarm()]
+          : plan.alarms.where((a) => a.enabled).toList();
+      if (alarms.isEmpty) return;
 
-        // Schedule 15 minutes before the study plan time
-        final notificationTime = notificationDate.subtract(
-          const Duration(minutes: 15),
-        );
-        await _scheduleOneTimeNotification(plan, notificationTime);
+      for (var i = 0; i < alarms.length; i++) {
+        final alarm = alarms[i];
+        if (plan.isRepeating && plan.repeatDays.isNotEmpty) {
+          await _scheduleRepeatingAlarm(plan, alarm, i);
+        } else {
+          await _scheduleOneTimeAlarm(plan, alarm, i);
+        }
       }
 
       logger.i('Scheduled notification for study plan: ${plan.id}');
@@ -158,132 +185,119 @@ class LocalNotificationService extends GetxService {
     }
   }
 
-  /// Schedule a one-time notification
-  Future<void> _scheduleOneTimeNotification(
+  Future<void> _scheduleOneTimeAlarm(
     StudyPlan plan,
-    DateTime scheduledDate,
+    StudyPlanAlarm alarm,
+    int alarmIndex,
   ) async {
+    final notificationDate = plan.dueDate ?? plan.startDate ?? plan.endDate;
+    if (notificationDate == null) return;
+    final scheduled = notificationDate.subtract(
+      Duration(minutes: alarm.offsetMinutes),
+    );
+    if (scheduled.isBefore(DateTime.now())) return;
+
     final preciseAlarm = await _shouldUsePreciseAlarm();
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
-        id: plan.id,
-        channelKey: channelKey,
+        id: _notificationId(plan.id, alarmIndex),
+        channelKey: _channelForSound(alarm.sound),
         title: 'Study Plan Reminder',
         body:
             '${plan.title}${plan.subject.isNotEmpty ? ' - ${plan.subject}' : ''}',
         notificationLayout: NotificationLayout.Default,
         category: NotificationCategory.Reminder,
         wakeUpScreen: true,
-        fullScreenIntent: false,
-        payload: {'plan_id': plan.id.toString()},
+        payload: {
+          'plan_id': plan.id.toString(),
+          'snooze_minutes': alarm.snoozeMinutes.toString(),
+          'sound': alarm.sound,
+          'vibration': alarm.vibration,
+        },
       ),
+      actionButtons: [
+        NotificationActionButton(key: 'SNOOZE', label: 'Snooze'),
+      ],
       schedule: NotificationCalendar.fromDate(
-        date: scheduledDate,
+        date: scheduled,
         allowWhileIdle: true,
         preciseAlarm: preciseAlarm,
       ),
     );
   }
 
-  /// Schedule repeating notifications based on repeatDays
-  /// Uses only the time portion (hour and minute) from baseTime
-  Future<void> _scheduleRepeatingNotification(
+  Future<void> _scheduleRepeatingAlarm(
     StudyPlan plan,
-    DateTime baseTime,
+    StudyPlanAlarm alarm,
+    int alarmIndex,
   ) async {
-    // Extract only the time portion (subtract 15 minutes for notification reminder)
-    final notificationHour = plan.startDate!.hour;
-    final notificationMinute = plan.startDate!.minute;
+    final start = plan.startDate;
+    if (start == null) return;
 
-    int finalHour = notificationHour;
-    int finalMinute = notificationMinute;
+    var minute = start.minute - alarm.offsetMinutes;
+    var hour = start.hour;
+    while (minute < 0) {
+      minute += 60;
+      hour -= 1;
+    }
+    if (hour < 0) hour += 24;
 
     final preciseAlarm = await _shouldUsePreciseAlarm();
-
-    // For each repeat day, schedule a notification
     for (final dayOfWeek in plan.repeatDays) {
-      // Calculate the next occurrence of this day
-      final nextDate = _getNextDateForDayOfWeek(
-        dayOfWeek,
-        finalHour,
-        finalMinute,
-      );
-
-      if (nextDate == null) continue;
-
-      // Create a unique ID for each day (plan.id * 10 + dayOfWeek)
-      final notificationId = plan.id * 10 + dayOfWeek;
-
       await AwesomeNotifications().createNotification(
         content: NotificationContent(
-          id: notificationId,
-          channelKey: channelKey,
+          id: _notificationId(plan.id, alarmIndex, dayOfWeek),
+          channelKey: _channelForSound(alarm.sound),
           title: 'Study Plan Reminder',
           body:
               '${plan.title}${plan.subject.isNotEmpty ? ' - ${plan.subject}' : ''}',
           notificationLayout: NotificationLayout.Default,
           category: NotificationCategory.Reminder,
           wakeUpScreen: true,
-          fullScreenIntent: false,
           payload: {
             'plan_id': plan.id.toString(),
             'day_of_week': dayOfWeek.toString(),
+            'snooze_minutes': alarm.snoozeMinutes.toString(),
+            'sound': alarm.sound,
+            'vibration': alarm.vibration,
           },
         ),
+        actionButtons: [
+          NotificationActionButton(key: 'SNOOZE', label: 'Snooze'),
+        ],
         schedule: NotificationCalendar(
-          year: null,
-          month: null,
-          day: null,
-          hour: finalHour,
-          minute: finalMinute,
+          hour: hour,
+          minute: minute,
           second: 0,
           millisecond: 0,
           repeats: true,
           allowWhileIdle: true,
           preciseAlarm: preciseAlarm,
-          // Repeat weekly
           weekday: dayOfWeek,
         ),
       );
     }
   }
 
-  /// Get the next date for a specific day of week using only time (hour and minute)
-  DateTime? _getNextDateForDayOfWeek(int dayOfWeek, int hour, int minute) {
-    final now = DateTime.now();
-    final daysUntilNext = (dayOfWeek - now.weekday + 7) % 7;
-
-    // If today is the target day and time hasn't passed, use today
-    if (daysUntilNext == 0 && hour * 60 + minute > now.hour * 60 + now.minute) {
-      return DateTime(now.year, now.month, now.day, hour, minute);
-    }
-
-    // Otherwise, get the next occurrence
-    final nextDate = now.add(
-      Duration(days: daysUntilNext == 0 ? 7 : daysUntilNext),
-    );
-    return DateTime(nextDate.year, nextDate.month, nextDate.day, hour, minute);
-  }
-
-  /// Cancel all notifications for a study plan
   Future<void> cancelStudyPlanNotifications(int planId) async {
     try {
-      // Cancel the main notification
       await AwesomeNotifications().cancel(planId);
-
-      // Cancel repeating notifications (plan.id * 10 + dayOfWeek)
       for (int day = 1; day <= 7; day++) {
-        final notificationId = planId * 10 + day;
-        await AwesomeNotifications().cancel(notificationId);
+        await AwesomeNotifications().cancel(planId * 10 + day);
       }
-
+      for (var alarmIndex = 0; alarmIndex < 10; alarmIndex++) {
+        for (var weekday = 0; weekday <= 7; weekday++) {
+          await AwesomeNotifications().cancel(
+            _notificationId(planId, alarmIndex, weekday),
+          );
+        }
+      }
       logger.d('Cancelled notifications for plan: $planId');
     } catch (e) {
       logger.e('Error cancelling notifications for plan $planId: $e');
     }
   }
 
-  /// Schedule notifications for all study plans
   Future<void> scheduleAllStudyPlans(List<StudyPlan> plans) async {
     final isAllowed = await isNotificationAllowed();
     if (!isAllowed) {
@@ -298,7 +312,6 @@ class LocalNotificationService extends GetxService {
     logger.i('Scheduled notifications for ${plans.length} study plans');
   }
 
-  /// Cancel all study plan notifications
   Future<void> cancelAllStudyPlanNotifications() async {
     try {
       await AwesomeNotifications().cancelAll();
@@ -308,12 +321,97 @@ class LocalNotificationService extends GetxService {
     }
   }
 
-  // Notification action handlers
+  Future<void> schedulePomodoroEnd({
+    required DateTime at,
+    required bool isWorkPhase,
+  }) async {
+    await cancelPomodoroNotifications();
+    if (at.isBefore(DateTime.now())) return;
+    final preciseAlarm = await _shouldUsePreciseAlarm();
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: isWorkPhase ? _pomodoroWorkId : _pomodoroGapId,
+        channelKey: pomodoroChannelKey,
+        title: isWorkPhase ? 'Work session complete' : 'Gap complete',
+        body: isWorkPhase
+            ? 'Time for a 40-minute gap.'
+            : 'Back to 25 minutes of work.',
+        notificationLayout: NotificationLayout.Default,
+        category: NotificationCategory.Alarm,
+        wakeUpScreen: true,
+        payload: {'type': 'pomodoro', 'phase': isWorkPhase ? 'work' : 'gap'},
+      ),
+      schedule: NotificationCalendar.fromDate(
+        date: at,
+        allowWhileIdle: true,
+        preciseAlarm: preciseAlarm,
+      ),
+    );
+  }
+
+  Future<void> cancelPomodoroNotifications() async {
+    await AwesomeNotifications().cancel(_pomodoroWorkId);
+    await AwesomeNotifications().cancel(_pomodoroGapId);
+  }
+
+  Future<void> scheduleChallengeDailyReminder({
+    required int challengeId,
+    required String title,
+    int hour = 8,
+    int minute = 0,
+  }) async {
+    await cancelChallengeReminder(challengeId);
+    final preciseAlarm = await _shouldUsePreciseAlarm();
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: _challengeIdBase + challengeId,
+        channelKey: challengeChannelKey,
+        title: 'Reading challenge',
+        body: 'Time to read: $title',
+        notificationLayout: NotificationLayout.Default,
+        category: NotificationCategory.Reminder,
+        payload: {'type': 'challenge', 'challenge_id': challengeId.toString()},
+      ),
+      schedule: NotificationCalendar(
+        hour: hour,
+        minute: minute,
+        second: 0,
+        repeats: true,
+        allowWhileIdle: true,
+        preciseAlarm: preciseAlarm,
+      ),
+    );
+  }
+
+  Future<void> cancelChallengeReminder(int challengeId) async {
+    await AwesomeNotifications().cancel(_challengeIdBase + challengeId);
+  }
+
   static Future<void> _onNotificationActionReceived(
     ReceivedAction receivedAction,
   ) async {
     logger.d('Notification action received: ${receivedAction.id}');
-    // Handle notification tap actions here if needed
+    if (receivedAction.buttonKeyPressed == 'SNOOZE') {
+      final minutes =
+          int.tryParse(receivedAction.payload?['snooze_minutes'] ?? '5') ?? 5;
+      final sound = receivedAction.payload?['sound'] ?? 'default';
+      final snoozeId = 910000 + (receivedAction.id ?? 0) % 1000;
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: snoozeId,
+          channelKey: sound == 'alarm' ? '${channelKey}_alarm' : channelKey,
+          title: receivedAction.title ?? 'Study Plan Reminder',
+          body: receivedAction.body ?? 'Snoozed reminder',
+          category: NotificationCategory.Reminder,
+          wakeUpScreen: true,
+        ),
+        schedule: NotificationCalendar.fromDate(
+          date: DateTime.now().add(Duration(minutes: minutes)),
+          allowWhileIdle: true,
+          preciseAlarm: true,
+        ),
+      );
+    }
   }
 
   static Future<void> _onNotificationCreated(

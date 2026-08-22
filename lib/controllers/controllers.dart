@@ -23,3 +23,7 @@ export "on_boarding/register_controller.dart";
 export "on_boarding/verify_phone_controller.dart";
 export 'study_planner/study_planner_controller.dart';
 export 'study_planner/add_plan_controller.dart';
+export 'study_hub/study_hub_controller.dart';
+export 'study_hub/pomodoro_controller.dart';
+export 'study_hub/reading_plan_controller.dart';
+export 'study_hub/challenge_controller.dart';

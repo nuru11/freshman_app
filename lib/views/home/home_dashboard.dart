@@ -498,7 +498,7 @@ class HomeDashboard extends StatelessWidget {
             ),
             item(
               icon: Icons.event_note_outlined,
-              title: 'Study Planner',
+              title: 'Study',
               selected: nav.currentIndex == 3,
               onTap: () => nav.changeIndex(3),
             ),

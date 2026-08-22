@@ -213,6 +213,8 @@ class StudyPlannerService extends GetxController {
       'end_date': plan.endDate?.toIso8601String(),
       'completed_dates': plan.completedDates,
       'repeat_days': plan.repeatDays,
+      'alarms_enabled': plan.alarmsEnabled,
+      'alarms': plan.alarms.map((e) => e.toJson()).toList(),
     };
   }
 }

@@ -77,6 +77,14 @@ class MyApp extends StatelessWidget {
             Get.put(DownloadsController(), permanent: true);
             Get.put(StudyPlannerService(), permanent: true);
             Get.put(StudyPlannerController(), permanent: true);
+            Get.put(PremiumService(), permanent: true);
+            Get.put(StudyHubController(), permanent: true);
+            Get.put(PomodoroService(), permanent: true);
+            Get.put(PomodoroController(), permanent: true);
+            Get.put(ReadingPlanService(), permanent: true);
+            Get.put(ReadingPlanController(), permanent: true);
+            Get.put(ReadingChallengeService(), permanent: true);
+            Get.put(ChallengeController(), permanent: true);
           }),
         ),
         GetPage(

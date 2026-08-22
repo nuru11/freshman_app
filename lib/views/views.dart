@@ -28,6 +28,7 @@ export 'about/about_page.dart';
 export 'faq/faq_page.dart';
 export 'study_planner/study_planner_page.dart';
 export 'study_planner/add_plan_page.dart';
+export 'study_hub/study_hub_page.dart';
 export 'payment/payment_page.dart';
 export 'payment_history_screen.dart';
 export 'success_stories/success_stories_page.dart';

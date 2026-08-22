@@ -164,6 +164,8 @@ class PaymentPage extends StatelessWidget {
     final String? targetSubjectName = args is Map
         ? args['subjectName'] as String?
         : null;
+    final bool prioritizePlanner =
+        args is Map && args['prioritizePlanner'] == true;
 
     Get.put(PaymentController());
     return GetBuilder<PaymentController>(
@@ -180,13 +182,18 @@ class PaymentPage extends StatelessWidget {
           child: SafeArea(
             child: Column(
               children: [
-                _buildModernTopBar(context, targetSubjectName),
+                _buildModernTopBar(
+                  context,
+                  targetSubjectName,
+                  prioritizePlanner: prioritizePlanner,
+                ),
                 Expanded(
                   child: _buildPackageSelection(
                     context,
                     controller,
                     targetSubjectId: targetSubjectId,
                     targetSubjectName: targetSubjectName,
+                    prioritizePlanner: prioritizePlanner,
                   ),
                 ),
               ],
@@ -197,13 +204,21 @@ class PaymentPage extends StatelessWidget {
     );
   }
 
-  Widget _buildModernTopBar(BuildContext context, String? targetSubjectName) {
-    final title = targetSubjectName == null || targetSubjectName.isEmpty
-        ? 'Choose Package'
-        : 'Unlock $targetSubjectName';
-    final subtitle = targetSubjectName == null || targetSubjectName.isEmpty
-        ? 'Select and pay for your subscription'
-        : 'Pay once to unlock all chapters';
+  Widget _buildModernTopBar(
+    BuildContext context,
+    String? targetSubjectName, {
+    bool prioritizePlanner = false,
+  }) {
+    final title = prioritizePlanner
+        ? 'Unlock Planner'
+        : targetSubjectName == null || targetSubjectName.isEmpty
+            ? 'Choose Package'
+            : 'Unlock $targetSubjectName';
+    final subtitle = prioritizePlanner
+        ? 'Select a planner package to continue'
+        : targetSubjectName == null || targetSubjectName.isEmpty
+            ? 'Select and pay for your subscription'
+            : 'Pay once to unlock all chapters';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -288,18 +303,22 @@ class PaymentPage extends StatelessWidget {
   Widget _buildPackageSelection(
     BuildContext context,
     PaymentController controller,
-    {int? targetSubjectId, String? targetSubjectName}
+    {int? targetSubjectId, String? targetSubjectName, bool prioritizePlanner = false}
   ) {
     if (controller.isLoading) {
       return _buildLoadingState();
     }
 
-    final packagesToShow = targetSubjectId == null
-        ? controller.packages
-        : _prioritizeTargetSubjectPackages(
-            controller.packages,
-            targetSubjectId,
-          );
+    List<Package> packagesToShow = controller.packages;
+    if (targetSubjectId != null) {
+      packagesToShow = _prioritizeTargetSubjectPackages(
+        packagesToShow,
+        targetSubjectId,
+      );
+    }
+    if (prioritizePlanner) {
+      packagesToShow = _plannerPackagesForUpgrade(packagesToShow);
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -371,19 +390,21 @@ class PaymentPage extends StatelessWidget {
           const SizedBox(height: 16),
 
           Expanded(
-            child: ListView.builder(
-              physics: const BouncingScrollPhysics(),
-              itemCount: packagesToShow.length,
-              itemBuilder: (context, index) {
-                final package = packagesToShow[index];
-                return _buildModernPackageCard(
-                  context,
-                  package,
-                  controller,
-                  index,
-                );
-              },
-            ),
+            child: packagesToShow.isEmpty && prioritizePlanner
+                ? _buildPlannerPackagesEmptyState()
+                : ListView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: packagesToShow.length,
+                    itemBuilder: (context, index) {
+                      final package = packagesToShow[index];
+                      return _buildModernPackageCard(
+                        context,
+                        package,
+                        controller,
+                        index,
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -402,6 +423,36 @@ class PaymentPage extends StatelessWidget {
         .toList();
 
     return [...targetPackages, ...otherPackages];
+  }
+
+  List<Package> _plannerPackagesForUpgrade(List<Package> packages) {
+    final plannerPackages =
+        packages.where((package) => package.includesPlanner).toList();
+    plannerPackages.sort((a, b) {
+      final aPlannerOnly = a.subjects.isEmpty;
+      final bPlannerOnly = b.subjects.isEmpty;
+      if (aPlannerOnly == bPlannerOnly) return 0;
+      return aPlannerOnly ? -1 : 1;
+    });
+    return plannerPackages;
+  }
+
+  Widget _buildPlannerPackagesEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Text(
+          'No planner packages are available for your grade yet. '
+          'Please try again later.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withValues(alpha: 0.9),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildLoadingState() {
@@ -528,6 +579,28 @@ class PaymentPage extends StatelessWidget {
                                       color: Colors.grey.shade600,
                                     ),
                                   ),
+                                  if (package.includesPlanner) ...[
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0F766E)
+                                            .withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text(
+                                        'Includes Planner',
+                                        style: TextStyle(
+                                          color: Color(0xFF0F766E),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),

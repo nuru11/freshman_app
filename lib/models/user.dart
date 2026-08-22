@@ -22,6 +22,10 @@ class User {
   final String createdAt;
   @JsonKey(name: 'updated_at')
   final String updatedAt;
+  @JsonKey(name: 'is_premium')
+  final bool isPremium;
+  @JsonKey(name: 'telegram_handle')
+  final String? telegramHandle;
   User({
     required this.id,
     required this.firstName,
@@ -32,10 +36,40 @@ class User {
     required this.grade,
     required this.createdAt,
     required this.updatedAt,
+    this.isPremium = false,
+    this.telegramHandle,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
   Map<String, dynamic> toJson() => _$UserToJson(this);
+
+  User copyWith({
+    int? id,
+    String? firstName,
+    String? lastName,
+    String? phoneNumber,
+    bool? isPhoneVerified,
+    String? profilePic,
+    Grade? grade,
+    String? createdAt,
+    String? updatedAt,
+    bool? isPremium,
+    String? telegramHandle,
+  }) {
+    return User(
+      id: id ?? this.id,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
+      profilePic: profilePic ?? this.profilePic,
+      grade: grade ?? this.grade,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isPremium: isPremium ?? this.isPremium,
+      telegramHandle: telegramHandle ?? this.telegramHandle,
+    );
+  }
 }
 
 @JsonSerializable()
@@ -115,6 +149,8 @@ class UserTypeAdapter implements TypeAdapter<User> {
       grade: json['grade'],
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
+      isPremium: json['is_premium'] as bool? ?? false,
+      telegramHandle: json['telegram_handle'] as String?,
     );
   }
 

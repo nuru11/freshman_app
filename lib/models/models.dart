@@ -23,3 +23,4 @@ export 'user_results.dart';
 export 'agent.dart';
 export 'redemption.dart';
 export 'referral_validation.dart';
+export 'reading_premium.dart';

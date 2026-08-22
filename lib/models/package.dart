@@ -13,6 +13,8 @@ class Package {
   final List<int> exams;
   final List<int> subjects;
   final int? grade;
+  @JsonKey(name: 'includes_planner')
+  final bool includesPlanner;
   @JsonKey(name: 'is_locked')
   final bool isLocked;
 
@@ -25,6 +27,7 @@ class Package {
     required this.exams,
     required this.subjects,
     required this.grade,
+    this.includesPlanner = false,
     required this.isLocked,
   });
 

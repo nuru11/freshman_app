@@ -4,28 +4,19 @@ import 'package:vector_academy/controllers/controllers.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/components/components.dart';
 import 'package:vector_academy/utils/utils.dart';
+import 'package:vector_academy/services/premium_service.dart';
+import 'package:vector_academy/views/study_planner/plan_alarms_sheet.dart';
 
 class StudyPlannerPage extends StatelessWidget {
-  const StudyPlannerPage({super.key});
+  const StudyPlannerPage({super.key, this.embeddedInHub = false});
+
+  final bool embeddedInHub;
 
   @override
   Widget build(BuildContext context) {
     return GetBuilder<StudyPlannerController>(
-      builder: (controller) => FreshmanPageScaffold(
-        embeddedInTab: true,
-        showBack: false,
-        title: 'Study Planner',
-        subtitle: 'Your week at a glance',
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => controller.showAddPlanDialog(),
-          icon: const Icon(Icons.add, color: Colors.white),
-          label: const Text(
-            'Add Plan',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-          ),
-          backgroundColor: primaryColor,
-        ),
-        body: Column(
+      builder: (controller) {
+        final body = Column(
           children: [
             if (controller.isShowingOfflineData) _buildOfflineNotice(),
             Expanded(
@@ -71,8 +62,27 @@ class StudyPlannerPage extends StatelessWidget {
                     ),
             ),
           ],
-        ),
-      ),
+        );
+
+        if (embeddedInHub) return body;
+
+        return FreshmanPageScaffold(
+          embeddedInTab: true,
+          showBack: false,
+          title: 'Study Planner',
+          subtitle: 'Your week at a glance',
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => controller.showAddPlanDialog(),
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text(
+              'Add Plan',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: primaryColor,
+          ),
+          body: body,
+        );
+      },
     );
   }
 
@@ -450,6 +460,46 @@ class StudyPlannerPage extends StatelessWidget {
               ),
             ),
             Icon(Icons.chevron_right_rounded, color: secondaryColor, size: 22),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: () {},
+              child: Column(
+              children: [
+                Switch(
+                  value: plan.alarmsEnabled,
+                  activeThumbColor: primaryColor,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  onChanged: (value) =>
+                      controller.togglePlanAlarms(plan, value),
+                ),
+                GestureDetector(
+                  onTap: () async {
+                    final premium = Get.find<PremiumService>();
+                    if (!await premium.ensurePremium(
+                      feature: 'advanced alarms',
+                    )) {
+                      return;
+                    }
+                    await showPlanAlarmsSheet(
+                      plan: plan,
+                      onSave: (enabled, alarms) => controller.savePlanAlarms(
+                        plan,
+                        enabled: enabled,
+                        alarms: alarms,
+                      ),
+                    );
+                  },
+                  child: Text(
+                    'Alarm',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: plan.alarmsEnabled ? primaryColor : onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            ),
           ],
         ),
       ),

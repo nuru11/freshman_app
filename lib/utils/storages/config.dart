@@ -14,6 +14,7 @@ class ConfigPreference {
       'asked_study_plan_notification_permission';
   static const String _askedStudyPlanExactAlarmKey =
       'asked_study_plan_exact_alarm_permission';
+  static const String _pomodoroStateKey = 'pomodoro_state';
 
   // Initialize Hive
   static Future<void> init() async {
@@ -91,5 +92,13 @@ class ConfigPreference {
 
   static Future<void> setAskedStudyPlanExactAlarmPermission(bool value) async {
     await _getBox().put(_askedStudyPlanExactAlarmKey, value);
+  }
+
+  static String? getPomodoroState() {
+    return _getBox().get(_pomodoroStateKey) as String?;
+  }
+
+  static Future<void> setPomodoroState(String value) async {
+    await _getBox().put(_pomodoroStateKey, value);
   }
 }
