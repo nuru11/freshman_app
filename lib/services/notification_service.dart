@@ -6,6 +6,20 @@ import 'package:vector_academy/utils/utils.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io' show Platform;
 
+class PomodoroNotificationSlot {
+  const PomodoroNotificationSlot({
+    required this.at,
+    required this.title,
+    required this.body,
+    required this.phase,
+  });
+
+  final DateTime at;
+  final String title;
+  final String body;
+  final String phase;
+}
+
 /// Local Notification Service for handling local notifications using awesome_notifications
 class LocalNotificationService extends GetxService {
   static const String channelKey = 'study_plans_channel';
@@ -15,8 +29,8 @@ class LocalNotificationService extends GetxService {
   static const String challengeChannelKey = 'challenge_channel';
 
   static const int _planIdBase = 200000;
-  static const int _pomodoroWorkId = 900001;
-  static const int _pomodoroGapId = 900002;
+  static const int _pomodoroAlarmIdBase = 900010;
+  static const int _pomodoroAlarmCount = 16;
   static const int _challengeIdBase = 800000;
 
   @override
@@ -321,37 +335,44 @@ class LocalNotificationService extends GetxService {
     }
   }
 
-  Future<void> schedulePomodoroEnd({
-    required DateTime at,
-    required bool isWorkPhase,
-  }) async {
+  Future<void> schedulePomodoroCycle(List<PomodoroNotificationSlot> alarms) async {
     await cancelPomodoroNotifications();
-    if (at.isBefore(DateTime.now())) return;
     final preciseAlarm = await _shouldUsePreciseAlarm();
-    await AwesomeNotifications().createNotification(
-      content: NotificationContent(
-        id: isWorkPhase ? _pomodoroWorkId : _pomodoroGapId,
-        channelKey: pomodoroChannelKey,
-        title: isWorkPhase ? 'Work session complete' : 'Gap complete',
-        body: isWorkPhase
-            ? 'Time for a 40-minute gap.'
-            : 'Back to 25 minutes of work.',
-        notificationLayout: NotificationLayout.Default,
-        category: NotificationCategory.Alarm,
-        wakeUpScreen: true,
-        payload: {'type': 'pomodoro', 'phase': isWorkPhase ? 'work' : 'gap'},
-      ),
-      schedule: NotificationCalendar.fromDate(
-        date: at,
-        allowWhileIdle: true,
-        preciseAlarm: preciseAlarm,
-      ),
-    );
+    final now = DateTime.now();
+    final count = alarms.length < _pomodoroAlarmCount
+        ? alarms.length
+        : _pomodoroAlarmCount;
+    for (var i = 0; i < count; i++) {
+      final alarm = alarms[i];
+      if (!alarm.at.isAfter(now)) continue;
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: _pomodoroAlarmIdBase + i,
+          channelKey: pomodoroChannelKey,
+          title: alarm.title,
+          body: alarm.body,
+          notificationLayout: NotificationLayout.Default,
+          category: NotificationCategory.Alarm,
+          wakeUpScreen: true,
+          fullScreenIntent: true,
+          autoDismissible: false,
+          payload: {'type': 'pomodoro', 'phase': alarm.phase},
+        ),
+        schedule: NotificationCalendar.fromDate(
+          date: alarm.at,
+          allowWhileIdle: true,
+          preciseAlarm: preciseAlarm,
+        ),
+      );
+    }
   }
 
   Future<void> cancelPomodoroNotifications() async {
-    await AwesomeNotifications().cancel(_pomodoroWorkId);
-    await AwesomeNotifications().cancel(_pomodoroGapId);
+    await AwesomeNotifications().cancel(900001);
+    await AwesomeNotifications().cancel(900002);
+    for (var i = 0; i < _pomodoroAlarmCount; i++) {
+      await AwesomeNotifications().cancel(_pomodoroAlarmIdBase + i);
+    }
   }
 
   Future<void> scheduleChallengeDailyReminder({

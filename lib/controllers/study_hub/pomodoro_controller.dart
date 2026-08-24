@@ -5,10 +5,33 @@ import 'package:vector_academy/services/pomodoro_service.dart';
 
 class PomodoroController extends GetxController {
   final PomodoroService service = Get.find<PomodoroService>();
+
   Timer? _timer;
 
-  String get phaseLabel =>
-      service.phase == PomodoroPhase.work ? 'Work' : 'Gap';
+  String get phaseLabel {
+    switch (service.phase) {
+      case PomodoroPhase.work:
+        return 'Focus ${service.focusNumber} of ${PomodoroService.worksPerCycle}';
+      case PomodoroPhase.shortBreak:
+        return 'Short break';
+      case PomodoroPhase.longBreak:
+        return 'Long break';
+    }
+  }
+
+  String get phaseDurationLabel {
+    final minutes = service.interval.inMinutes;
+    switch (service.phase) {
+      case PomodoroPhase.work:
+        return '$minutes-minute focus';
+      case PomodoroPhase.shortBreak:
+        return '$minutes-minute short break';
+      case PomodoroPhase.longBreak:
+        return '$minutes-minute long break';
+    }
+  }
+
+  bool get isWork => service.phase == PomodoroPhase.work;
 
   Duration get remaining => service.remaining();
 
@@ -22,6 +45,8 @@ class PomodoroController extends GetxController {
   }
 
   bool get isRunning => service.isRunning;
+
+  int get completedWorkSessions => service.completedWorkSessions;
 
   @override
   void onInit() {
@@ -55,6 +80,21 @@ class PomodoroController extends GetxController {
 
   Future<void> reset() async {
     await service.reset();
+    update();
+  }
+
+  Future<void> adjustWorkMinutes(int delta) async {
+    await service.setWorkMinutes(service.workMinutes + delta);
+    update();
+  }
+
+  Future<void> adjustShortBreakMinutes(int delta) async {
+    await service.setShortBreakMinutes(service.shortBreakMinutes + delta);
+    update();
+  }
+
+  Future<void> adjustLongBreakMinutes(int delta) async {
+    await service.setLongBreakMinutes(service.longBreakMinutes + delta);
     update();
   }
 }

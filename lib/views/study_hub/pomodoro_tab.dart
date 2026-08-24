@@ -11,7 +11,7 @@ class PomodoroTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetBuilder<PomodoroController>(
       builder: (controller) {
-        final isWork = controller.service.phase == PomodoroPhase.work;
+        final isWork = controller.isWork;
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
@@ -27,10 +27,15 @@ class PomodoroTab extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    isWork ? '25-minute focus' : '40-minute gap',
+                    controller.phaseDurationLabel,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: onSurfaceVariant,
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  _CycleDots(
+                    completedWorkSessions: controller.completedWorkSessions,
+                    isWork: isWork,
                   ),
                   const SizedBox(height: 24),
                   Text(
@@ -74,9 +79,55 @@ class PomodoroTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+            FreshmanSurfaceCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Durations',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    controller.isRunning
+                        ? 'Pause the timer to change times.'
+                        : 'Customize focus and break lengths.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _DurationStepper(
+                    label: 'Focus',
+                    minutes: controller.service.workMinutes,
+                    enabled: !controller.isRunning,
+                    onMinus: () => controller.adjustWorkMinutes(-1),
+                    onPlus: () => controller.adjustWorkMinutes(1),
+                  ),
+                  _DurationStepper(
+                    label: 'Short break',
+                    minutes: controller.service.shortBreakMinutes,
+                    enabled: !controller.isRunning,
+                    onMinus: () => controller.adjustShortBreakMinutes(-1),
+                    onPlus: () => controller.adjustShortBreakMinutes(1),
+                  ),
+                  _DurationStepper(
+                    label: 'Long break',
+                    minutes: controller.service.longBreakMinutes,
+                    enabled: !controller.isRunning,
+                    onMinus: () => controller.adjustLongBreakMinutes(-1),
+                    onPlus: () => controller.adjustLongBreakMinutes(1),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
-              'The timer keeps running if you leave the app or lock the phone. '
-              'You will get a sound and notification when it is time to switch.',
+              'Four focus sessions, with a short break after each of the first three '
+              'and a long break after the fourth. Alarms still ring if you lock '
+              'the phone or close the app.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: onSurfaceVariant,
               ),
@@ -84,6 +135,101 @@ class PomodoroTab extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _CycleDots extends StatelessWidget {
+  const _CycleDots({
+    required this.completedWorkSessions,
+    required this.isWork,
+  });
+
+  final int completedWorkSessions;
+  final bool isWork;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(PomodoroService.worksPerCycle, (index) {
+        final filled = index < completedWorkSessions;
+        final current = isWork && index == completedWorkSessions;
+        final color = current
+            ? primaryColor
+            : filled
+                ? primaryColor.withValues(alpha: 0.45)
+                : onSurfaceVariant.withValues(alpha: 0.25);
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 5),
+          child: Container(
+            width: current ? 12 : 10,
+            height: current ? 12 : 10,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: current
+                  ? Border.all(color: primaryColor, width: 2)
+                  : null,
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _DurationStepper extends StatelessWidget {
+  const _DurationStepper({
+    required this.label,
+    required this.minutes,
+    required this.enabled,
+    required this.onMinus,
+    required this.onPlus,
+  });
+
+  final String label;
+  final int minutes;
+  final bool enabled;
+  final VoidCallback onMinus;
+  final VoidCallback onPlus;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          IconButton(
+            onPressed: enabled && minutes > PomodoroService.minMinutes
+                ? onMinus
+                : null,
+            icon: const Icon(Icons.remove_circle_outline),
+          ),
+          SizedBox(
+            width: 56,
+            child: Text(
+              '$minutes min',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: enabled && minutes < PomodoroService.maxMinutes
+                ? onPlus
+                : null,
+            icon: const Icon(Icons.add_circle_outline),
+          ),
+        ],
+      ),
     );
   }
 }
