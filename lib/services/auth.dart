@@ -1,5 +1,6 @@
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/services/api/api.dart';
+import 'package:vector_academy/utils/device/device.dart';
 import 'package:vector_academy/utils/storages/storages.dart';
 import 'package:get/get.dart';
 
@@ -20,6 +21,7 @@ class AuthService extends GetxService {
   }
 
   Future<void> saveUser(User user) async {
+    UserDevice.clearCache();
     this.user.value = user;
     await _hiveUserStorage.setUser(user);
   }
@@ -43,6 +45,7 @@ class AuthService extends GetxService {
   }
 
   Future<void> logout() async {
+    UserDevice.clearCache();
     await _hiveAuthStorage.clear();
     await _hiveUserStorage.clear();
     authToken.value = null;

@@ -790,6 +790,13 @@ class PaymentPage extends StatelessWidget {
   }
 
   void _navigateToPaymentMethod(Package package, PaymentController controller) {
+    final args = Get.arguments;
+    final checkoutArgs = args is Map
+        ? Map<String, dynamic>.from(args)
+        : <String, dynamic>{};
+    if (!requireAuthForPurchase(checkoutArgs: checkoutArgs)) {
+      return;
+    }
     controller.beginCheckout(package);
     Get.to(() => _PaymentMethodPage(package: package, controller: controller));
   }

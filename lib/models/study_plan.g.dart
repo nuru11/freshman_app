@@ -10,8 +10,8 @@ StudyPlanAlarm _$StudyPlanAlarmFromJson(Map<String, dynamic> json) =>
     StudyPlanAlarm(
       id: json['id'] as String? ??
           DateTime.now().millisecondsSinceEpoch.toString(),
-      offsetMinutes: (json['offset_minutes'] as num?)?.toInt() ?? 15,
-      sound: json['sound'] as String? ?? 'default',
+      offsetMinutes: (json['offset_minutes'] as num?)?.toInt() ?? 0,
+      sound: json['sound'] as String? ?? 'alarm',
       vibration: json['vibration'] as String? ?? 'default',
       snoozeMinutes: (json['snooze_minutes'] as num?)?.toInt() ?? 5,
       enabled: json['enabled'] as bool? ?? true,
@@ -32,15 +32,9 @@ StudyPlan _$StudyPlanFromJson(Map<String, dynamic> json) => StudyPlan(
   title: json['title'] as String,
   description: json['description'] as String? ?? '',
   subject: json['subject'] as String? ?? '',
-  dueDate: json['due_date'] == null
-      ? null
-      : DateTime.parse(json['due_date'] as String),
-  startDate: json['start_date'] == null
-      ? null
-      : DateTime.parse(json['start_date'] as String),
-  endDate: json['end_date'] == null
-      ? null
-      : DateTime.parse(json['end_date'] as String),
+  dueDate: studyPlanDateTimeFromJson(json['due_date'] as String?),
+  startDate: studyPlanDateTimeFromJson(json['start_date'] as String?),
+  endDate: studyPlanDateTimeFromJson(json['end_date'] as String?),
   completedDates:
       (json['completed_dates'] as List<dynamic>?)
           ?.map((e) => e as String)
@@ -54,7 +48,7 @@ StudyPlan _$StudyPlanFromJson(Map<String, dynamic> json) => StudyPlan(
           ?.map((e) => (e as num).toInt())
           .toList() ??
       const [],
-  alarmsEnabled: json['alarms_enabled'] as bool? ?? true,
+  alarmsEnabled: json['alarms_enabled'] as bool? ?? false,
   alarms:
       (json['alarms'] as List<dynamic>?)
           ?.map((e) => StudyPlanAlarm.fromJson(Map<String, dynamic>.from(e as Map)))
@@ -67,9 +61,9 @@ Map<String, dynamic> _$StudyPlanToJson(StudyPlan instance) => <String, dynamic>{
   'title': instance.title,
   'description': instance.description,
   'subject': instance.subject,
-  'due_date': ?instance.dueDate?.toIso8601String(),
-  'start_date': ?instance.startDate?.toIso8601String(),
-  'end_date': ?instance.endDate?.toIso8601String(),
+  'due_date': ?studyPlanDateTimeToJson(instance.dueDate),
+  'start_date': ?studyPlanDateTimeToJson(instance.startDate),
+  'end_date': ?studyPlanDateTimeToJson(instance.endDate),
   'completed_dates': instance.completedDates,
   'created_at': instance.createdAt.toIso8601String(),
   'repeat_days': instance.repeatDays,

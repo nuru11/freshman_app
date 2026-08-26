@@ -683,6 +683,7 @@ class DownloadsController extends GetxController {
 
   // Start exam
   Future<void> startExam(Exam exam) async {
+    if (!requireAuth()) return;
     if (isExamLocked(exam)) {
       AppSnackbar.showInfo(
         'Locked Exam',

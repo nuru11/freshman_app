@@ -1,4 +1,5 @@
 import 'package:vector_academy/utils/storages/storages.dart';
+import 'package:vector_academy/utils/home_tab_controllers.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/views/views.dart';
 import 'package:vector_academy/services/services.dart';
@@ -23,6 +24,7 @@ class ProfileController extends GetxController {
   final nameEditController = TextEditingController();
   User? _user;
   User? get user => _user;
+  bool get isAuthenticated => _authService.isAuthenticated;
   String get fullName => "${_user?.firstName} ${_user?.lastName ?? ''}";
 
   late StreamSubscription<InternetStatus> _internetStatusSubscription;
@@ -85,6 +87,12 @@ class ProfileController extends GetxController {
   Future<void> loadUserData() async {
     _isLoading = true;
     update();
+
+    if (!_authService.isAuthenticated) {
+      _isLoading = false;
+      update();
+      return;
+    }
 
     try {
       final user_ = await UserService().getUser();
@@ -296,6 +304,7 @@ class ProfileController extends GetxController {
   }
 
   void navigateToEditProfile() {
+    if (!requireAuth()) return;
     Get.toNamed('/edit-profile');
   }
 
@@ -309,7 +318,8 @@ class ProfileController extends GetxController {
 
   void logout() async {
     await _authService.logout();
-    Get.offAllNamed(VIEWS.login.path);
+    clearHomeTabControllers();
+    Get.offAllNamed(VIEWS.home.path);
   }
 
   void showDeleteAccountDialog() {
@@ -503,7 +513,7 @@ class ProfileController extends GetxController {
       );
 
       // Navigate to login and clear all routes
-      Get.offAllNamed(VIEWS.login.path);
+      Get.offAllNamed(VIEWS.home.path);
     } catch (e) {
       logger.e('Error deleting account: $e');
 

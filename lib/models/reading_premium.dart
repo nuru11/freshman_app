@@ -1,3 +1,5 @@
+import 'package:vector_academy/utils/app_clock.dart';
+
 class ReadingPlanDocument {
   final int id;
   final String title;
@@ -34,6 +36,7 @@ class ReadingChallenge {
   final String description;
   final String rules;
   final int targetBooks;
+  final DateTime? startAt;
   final DateTime? deadline;
   final bool isActive;
   final bool joined;
@@ -47,6 +50,7 @@ class ReadingChallenge {
     required this.description,
     required this.rules,
     required this.targetBooks,
+    this.startAt,
     this.deadline,
     required this.isActive,
     required this.joined,
@@ -62,6 +66,9 @@ class ReadingChallenge {
       description: json['description'] as String? ?? '',
       rules: json['rules'] as String? ?? '',
       targetBooks: (json['target_books'] as num?)?.toInt() ?? 0,
+      startAt: json['start_at'] == null
+          ? null
+          : DateTime.tryParse(json['start_at'] as String),
       deadline: json['deadline'] == null
           ? null
           : DateTime.tryParse(json['deadline'] as String),
@@ -82,6 +89,7 @@ class ReadingChallenge {
       description: description,
       rules: rules,
       targetBooks: targetBooks,
+      startAt: startAt,
       deadline: deadline,
       isActive: isActive,
       joined: joined ?? this.joined,
@@ -89,5 +97,39 @@ class ReadingChallenge {
       membersCount: membersCount,
       createdAt: createdAt,
     );
+  }
+
+  static const int dailyAlarmHour = 8;
+  static const int dailyAlarmMinute = 0;
+
+  /// Next start, end, or daily alarm on the real clock.
+  DateTime? nextAlarmAt({DateTime? now}) {
+    if (!joined) return null;
+    final from = now ?? AppClock.now();
+    DateTime? soonest;
+
+    void consider(DateTime? candidate) {
+      if (candidate == null || !candidate.isAfter(from)) return;
+      if (soonest == null || candidate.isBefore(soonest!)) {
+        soonest = candidate;
+      }
+    }
+
+    consider(startAt);
+    consider(deadline);
+    if (alarmEnabled) {
+      var daily = DateTime(
+        from.year,
+        from.month,
+        from.day,
+        dailyAlarmHour,
+        dailyAlarmMinute,
+      );
+      if (!daily.isAfter(from)) {
+        daily = daily.add(const Duration(days: 1));
+      }
+      consider(daily);
+    }
+    return soonest;
   }
 }

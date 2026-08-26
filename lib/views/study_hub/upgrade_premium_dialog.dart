@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/components/ui/themes/light_theme.dart';
 import 'package:vector_academy/views/views.dart';
+import 'package:vector_academy/utils/utils.dart';
 
 Future<void> showUpgradeToPremiumDialog({
   String feature = 'this feature',
@@ -9,6 +10,9 @@ Future<void> showUpgradeToPremiumDialog({
   final arguments = {'prioritizePlanner': true};
   final context = Get.context;
   if (context == null) {
+    if (!requireAuthForPurchase(checkoutArgs: arguments)) {
+      return;
+    }
     Get.toNamed(VIEWS.payments.path, arguments: arguments);
     return;
   }
@@ -30,6 +34,9 @@ Future<void> showUpgradeToPremiumDialog({
           FilledButton(
             onPressed: () {
               Navigator.of(ctx).pop();
+              if (!requireAuthForPurchase(checkoutArgs: arguments)) {
+                return;
+              }
               Get.toNamed(VIEWS.payments.path, arguments: arguments);
             },
             style: FilledButton.styleFrom(

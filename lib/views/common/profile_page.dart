@@ -49,10 +49,11 @@ class ProfilePage extends StatelessWidget {
               onPressed: () => safePop(context: context),
             ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.edit, color: Color(0xFF0B5F56)),
-          onPressed: () => controller.navigateToEditProfile(),
-        ),
+        if (controller.isAuthenticated)
+          IconButton(
+            icon: const Icon(Icons.edit, color: Color(0xFF0B5F56)),
+            onPressed: () => controller.navigateToEditProfile(),
+          ),
         const SizedBox(width: 8),
       ],
       flexibleSpace: FlexibleSpaceBar(
@@ -66,7 +67,9 @@ class ProfilePage extends StatelessWidget {
               child: Column(
                 children: [
                   GestureDetector(
-                    onTap: () => controller.showProfileImagePickerOptions(),
+                    onTap: controller.isAuthenticated
+                        ? () => controller.showProfileImagePickerOptions()
+                        : null,
                     child: Container(
                       width: 100,
                       height: 100,
@@ -83,7 +86,7 @@ class ProfilePage extends StatelessWidget {
 
                   SizedBox(height: 12),
                   Text(
-                    controller.fullName,
+                    controller.isAuthenticated ? controller.fullName : 'Guest',
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -91,7 +94,9 @@ class ProfilePage extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    controller.user?.grade.name ?? '',
+                    controller.isAuthenticated
+                        ? (controller.user?.grade.name ?? '')
+                        : 'Sign up to save your progress',
                     style: const TextStyle(
                       fontSize: 14,
                       color: Color(0xFF78716C),
@@ -115,6 +120,59 @@ class ProfilePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (!controller.isAuthenticated) ...[
+            Text(
+              'Create an account',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Sign up to purchase courses and track your progress.',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+            SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Get.toNamed(VIEWS.register.path),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0B5F56),
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Sign Up',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Get.toNamed(VIEWS.login.path),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF0B5F56),
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Login',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            SizedBox(height: 40),
+          ] else ...[
           // Profile Information
           Text(
             'Profile Information',
@@ -241,6 +299,7 @@ class ProfilePage extends StatelessWidget {
           ),
 
           SizedBox(height: 20),
+          ],
         ],
       ),
     );

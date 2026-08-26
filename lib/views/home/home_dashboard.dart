@@ -536,13 +536,26 @@ class HomeDashboard extends StatelessWidget {
                 await launchUrl(Uri.parse(supportTelegramUrl));
               },
             ),
-            GetBuilder<NavigationDrawerController>(
-              builder: (drawerController) => item(
-                icon: Icons.logout,
-                title: 'Log out',
-                onTap: () => drawerController.logout(),
+            if (isCurrentUserAuthenticated)
+              GetBuilder<NavigationDrawerController>(
+                builder: (drawerController) => item(
+                  icon: Icons.logout,
+                  title: 'Log out',
+                  onTap: () => drawerController.logout(),
+                ),
+              )
+            else ...[
+              item(
+                icon: Icons.person_add_alt_1_outlined,
+                title: 'Sign Up',
+                onTap: () => Get.toNamed(VIEWS.register.path),
               ),
-            ),
+              item(
+                icon: Icons.login,
+                title: 'Login',
+                onTap: () => Get.toNamed(VIEWS.login.path),
+              ),
+            ],
           ],
         ),
       ),

@@ -4,6 +4,7 @@ import 'package:vector_academy/models/reading_premium.dart';
 import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/services/api/reading_plan.dart';
 import 'package:vector_academy/services/auth.dart';
+import 'package:vector_academy/services/premium_service.dart';
 import 'package:vector_academy/utils/snackbar_utils.dart';
 import 'package:vector_academy/utils/utils.dart';
 import 'package:vector_academy/views/views.dart';
@@ -17,13 +18,22 @@ class ReadingPlanController extends GetxController {
   bool savingTelegram = false;
   late final TextEditingController telegramController;
 
+  bool get _canLoadPremiumContent {
+    if (!Get.isRegistered<AuthService>() ||
+        !Get.find<AuthService>().isAuthenticated) {
+      return false;
+    }
+    if (!Get.isRegistered<PremiumService>()) return false;
+    return Get.find<PremiumService>().isPremium;
+  }
+
   @override
   void onInit() {
     super.onInit();
     telegramHandle =
         Get.find<AuthService>().user.value?.telegramHandle ?? '';
     telegramController = TextEditingController(text: telegramHandle);
-    load();
+    load(showError: false);
   }
 
   @override
@@ -32,17 +42,26 @@ class ReadingPlanController extends GetxController {
     super.onClose();
   }
 
-  Future<void> load() async {
+  Future<void> load({bool showError = true}) async {
+    if (!_canLoadPremiumContent) {
+      documents = [];
+      isLoading = false;
+      update();
+      return;
+    }
+
     isLoading = true;
     update();
     try {
       documents = await _service.listDocuments();
     } catch (e) {
       logger.e('Failed to load reading plans: $e');
-      AppSnackbar.showError(
-        'Error',
-        e is ApiException ? e.message : 'Failed to load reading plans',
-      );
+      if (showError) {
+        AppSnackbar.showError(
+          'Error',
+          e is ApiException ? e.message : 'Failed to load reading plans',
+        );
+      }
     } finally {
       isLoading = false;
       update();

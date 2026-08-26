@@ -64,16 +64,20 @@ class AddPlanController extends GetxController {
       titleController = TextEditingController(text: plan!.title);
       descriptionController = TextEditingController(text: plan!.description);
       // Stored times are Western; convert to Ethiopian for display
-      selectedDate = plan!.startDate ?? plan!.dueDate;
+      selectedDate = (plan!.startDate ?? plan!.dueDate)?.toLocal();
       startTime = plan!.startDate != null
-          ? EthiopianTime.toEthiopian(TimeOfDay.fromDateTime(plan!.startDate!))
+          ? EthiopianTime.toEthiopian(
+              TimeOfDay.fromDateTime(plan!.startDate!.toLocal()),
+            )
           : (plan!.dueDate != null
                 ? EthiopianTime.toEthiopian(
-                    TimeOfDay.fromDateTime(plan!.dueDate!),
+                    TimeOfDay.fromDateTime(plan!.dueDate!.toLocal()),
                   )
                 : null);
       endTime = plan!.endDate != null
-          ? EthiopianTime.toEthiopian(TimeOfDay.fromDateTime(plan!.endDate!))
+          ? EthiopianTime.toEthiopian(
+              TimeOfDay.fromDateTime(plan!.endDate!.toLocal()),
+            )
           : null;
       selectedDays = Set<int>.from(plan!.repeatDays);
       if (plan!.subject.isNotEmpty) {
@@ -109,7 +113,7 @@ class AddPlanController extends GetxController {
       final device = await UserDevice.getDeviceInfo(user?.phoneNumber ?? '');
       final fetched = await SubjectsService().getSubjects(
         device.id,
-        gradeId: user?.grade.id ?? 0,
+        gradeId: user?.grade.id,
       );
       courses = fetched;
       await HiveSubjectsStorage().write('subjects', courses);
@@ -298,6 +302,7 @@ class AddPlanController extends GetxController {
           completedDates: [], // New plans start with no completions
           createdAt: DateTime.now(),
           repeatDays: selectedDays.toList()..sort(),
+          alarmsEnabled: false,
         );
         await controller.addStudyPlan(newPlan, showSnackbar: false);
       }

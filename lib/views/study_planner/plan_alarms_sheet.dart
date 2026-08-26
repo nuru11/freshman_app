@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/components/ui/themes/light_theme.dart';
 import 'package:vector_academy/models/study_plan.dart';
+import 'package:vector_academy/views/study_planner/notify_countdown.dart';
 
 Future<void> showPlanAlarmsSheet({
   required StudyPlan plan,
@@ -100,7 +101,7 @@ class _PlanAlarmsSheetState extends State<_PlanAlarmsSheet> {
                       label: 'When',
                       value: _offsets.contains(alarm.offsetMinutes)
                           ? alarm.offsetMinutes
-                          : 15,
+                          : 0,
                       items: {
                         for (final m in _offsets)
                           m: m == 0 ? 'At start time' : '$m min before',
@@ -109,6 +110,20 @@ class _PlanAlarmsSheetState extends State<_PlanAlarmsSheet> {
                         _alarms[index] = alarm.copyWith(offsetMinutes: v);
                       }),
                     ),
+                    if (_enabled && alarm.enabled)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: NotifyCountdownLabel(
+                            fireAt: widget.plan.nextNotificationAt(
+                              alarm: _alarms[index],
+                              alarmsOn: _enabled,
+                            ),
+                            alarmsOn: _enabled,
+                          ),
+                        ),
+                      ),
                     _dropdown<String>(
                       label: 'Sound',
                       value: alarm.sound,

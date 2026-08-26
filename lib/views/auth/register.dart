@@ -7,6 +7,7 @@ import 'package:vector_academy/components/components.dart';
 import 'package:vector_academy/config/app_config.dart';
 import 'package:vector_academy/flavors/flavor_config.dart';
 import 'package:vector_academy/utils/navigation_utils.dart';
+import 'package:vector_academy/views/views.dart';
 
 class Register extends StatelessWidget {
   const Register({super.key});
@@ -273,6 +274,27 @@ class Register extends StatelessWidget {
                             text: 'Create account',
                             onPressed: () => controller.register(),
                             isLoading: controller.isLoading,
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Already have an account?',
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Get.toNamed(VIEWS.login.path),
+                                child: Text(
+                                  'Sign in',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: secondaryColor,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

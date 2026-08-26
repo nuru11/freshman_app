@@ -3,6 +3,7 @@ import 'package:vector_academy/services/api/exceptions.dart';
 import 'api.dart';
 import '../../models/exam.dart';
 import '../../models/question.dart';
+import '../../utils/utils.dart';
 
 class ExamService extends GetxService {
   final ApiClient apiClient = ApiClient();
@@ -16,7 +17,9 @@ class ExamService extends GetxService {
     int? gradeId,
     bool onlyUnlocked = false,
   }) async {
-    final queryParams = <String, dynamic>{};
+    final queryParams = <String, dynamic>{
+      'app_package': backendAppPackage,
+    };
 
     if (examType != null) {
       queryParams['exam_type'] = examType;
@@ -32,7 +35,7 @@ class ExamService extends GetxService {
     if (chapterId != null) {
       queryParams['chapter'] = chapterId;
     }
-    if (gradeId != null) {
+    if (gradeId != null && gradeId > 0) {
       queryParams['grade'] = gradeId;
     }
     if (onlyUnlocked) {
@@ -42,7 +45,7 @@ class ExamService extends GetxService {
     final response = await apiClient.get(
       '/app/exams/?device=$deviceId',
       queryParameters: queryParams,
-      authenticated: true,
+      authenticated: BaseApiClient.accessToken.isNotEmpty,
     );
 
     if (response.statusCode == 200) {

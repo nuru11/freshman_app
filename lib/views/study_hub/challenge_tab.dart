@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:vector_academy/components/components.dart';
 import 'package:vector_academy/controllers/study_hub/challenge_controller.dart';
 import 'package:vector_academy/models/reading_premium.dart';
+import 'package:vector_academy/utils/ethiopian_time.dart';
+import 'package:vector_academy/views/study_planner/notify_countdown.dart';
 
 class ChallengeTab extends StatelessWidget {
   const ChallengeTab({super.key});
@@ -66,9 +68,17 @@ class _ChallengeCard extends StatelessWidget {
   final VoidCallback onJoin;
   final ValueChanged<bool> onAlarm;
 
+  String _formatLocalClock(DateTime dateTime) {
+    final local = dateTime.toLocal();
+    final date = DateFormat('MMM d, yyyy').format(local);
+    final clock = EthiopianTime.formatWesternDateTimeClock(local);
+    return '$date • $clock';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final deadline = challenge.deadline;
+    final startAt = challenge.startAt;
+    final endAt = challenge.deadline;
     return FreshmanSurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,10 +100,27 @@ class _ChallengeCard extends StatelessWidget {
           ],
           const SizedBox(height: 8),
           Text(
-            'Target: ${challenge.targetBooks} books'
-            '${deadline == null ? '' : ' by ${DateFormat.yMMMd().format(deadline.toLocal())}'}',
+            'Target: ${challenge.targetBooks} books',
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
+          if (startAt != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Starts ${_formatLocalClock(startAt)}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+          if (endAt != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Ends ${_formatLocalClock(endAt)}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+          if (challenge.joined) ...[
+            const SizedBox(height: 6),
+            NotifyCountdownLabel(fireAt: challenge.nextAlarmAt()),
+          ],
           if (challenge.rules.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(

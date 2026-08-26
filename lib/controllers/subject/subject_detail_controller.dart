@@ -76,9 +76,16 @@ class SubjectDetailController extends GetxController {
 
   void handleChapterTap(Chapter chapter) {
     if (isChapterLocked(chapter)) {
+      final checkoutArgs = {
+        'subjectId': subjectId,
+        'subjectName': _subjectName,
+      };
+      if (!requireAuthForPurchase(checkoutArgs: checkoutArgs)) {
+        return;
+      }
       Get.toNamed(
         VIEWS.payments.path,
-        arguments: {'subjectId': subjectId, 'subjectName': _subjectName},
+        arguments: checkoutArgs,
       );
       AppSnackbar.showInfo(
         'Subscription Required',

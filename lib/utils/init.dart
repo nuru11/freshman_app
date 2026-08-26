@@ -36,7 +36,7 @@ Future<void> initialize() async {
 
   await ConfigPreference.init();
 
-  // Register notification service (permissions requested in-context from Study Planner)
+  await local_notif.LocalNotificationService.initializePlugin();
   Get.put(local_notif.LocalNotificationService());
 
   logger.i('Initilizing The application');

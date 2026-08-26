@@ -104,9 +104,14 @@ class ChapterDetailController extends GetxController {
 
     final canAccessChapter = await _canAccessCurrentChapter();
     if (!canAccessChapter) {
+      final checkoutArgs = {'subjectId': subjectId};
+      if (!requireAuthForPurchase(checkoutArgs: checkoutArgs, replace: true)) {
+        super.onInit();
+        return;
+      }
       Get.offNamed(
         VIEWS.payments.path,
-        arguments: {'subjectId': subjectId},
+        arguments: checkoutArgs,
       );
       AppSnackbar.showInfo(
         'Subscription Required',

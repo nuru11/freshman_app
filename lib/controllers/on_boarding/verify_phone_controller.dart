@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:vector_academy/views/views.dart';
 import 'package:vector_academy/services/services.dart';
 import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/utils/utils.dart';
@@ -22,10 +21,12 @@ class VerifyPhoneController extends GetxController {
   Timer? _timer;
 
   String phoneNumber = '';
+  Map<String, dynamic>? _redirectArgs;
 
   @override
   void onInit() {
     super.onInit();
+    _redirectArgs = captureAuthRedirectArgs();
     phoneNumber = Get.arguments?['phone'] ?? '';
     _startResendTimer();
   }
@@ -60,7 +61,7 @@ class VerifyPhoneController extends GetxController {
         logger.i(response);
 
         if (otpController.text.length == 6) {
-          Get.offAllNamed(VIEWS.home.path);
+          navigateAfterAuth(_redirectArgs);
           AppSnackbar.showSuccessAfterNav(
             'Success',
             'Phone verified successfully!',

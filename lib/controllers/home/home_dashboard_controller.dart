@@ -138,7 +138,7 @@ class HomeDashboardController extends GetxController {
 
       _subjects = await SubjectsService().getSubjects(
         device.id,
-        gradeId: gradeId ?? 0,
+        gradeId: gradeId,
       );
       await HiveSubjectsStorage().write('subjects', _subjects);
     } catch (e) {
@@ -256,6 +256,7 @@ class HomeDashboardController extends GetxController {
   }
 
   void openExam(int examId) {
+    if (!requireAuth()) return;
     final examController = Get.find<ExamController>();
     Exam? selectedExam;
     for (final exam in examController.exams) {

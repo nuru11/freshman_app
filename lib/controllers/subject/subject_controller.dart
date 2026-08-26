@@ -47,7 +47,7 @@ class SubjectController extends GetxController {
       final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
       _subjects = await SubjectsService().getSubjects(
         device.id,
-        gradeId: _user?.grade.id ?? 0,
+        gradeId: _user?.grade.id,
       );
       await HiveSubjectsStorage().write('subjects', _subjects);
     } catch (e) {

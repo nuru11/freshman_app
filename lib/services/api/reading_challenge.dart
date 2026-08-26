@@ -13,7 +13,11 @@ class ReadingChallengeService extends GetxController {
         '/app/reading-challenges/',
         authenticated: true,
       );
-      if (response.statusCode == 403) return [];
+      if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 404) {
+        return [];
+      }
       if (response.statusCode == 200 && response.data is List) {
         return (response.data as List)
             .map((e) => ReadingChallenge.fromJson(e))

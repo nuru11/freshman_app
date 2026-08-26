@@ -190,6 +190,13 @@ class StudyPlannerController extends GetxController {
     _isShowingOfflineData = false;
     update();
 
+    if (!isCurrentUserAuthenticated) {
+      _studyPlans = [];
+      _isLoading = false;
+      update();
+      return;
+    }
+
     try {
       // Load from local storage first for immediate UI update
       final localPlans = await _storage.getStudyPlans();
@@ -237,10 +244,12 @@ class StudyPlannerController extends GetxController {
   }
 
   void showAddPlanDialog() {
+    if (!requireAuth()) return;
     Get.toNamed('/add-plan');
   }
 
   void showEditPlanPage(StudyPlan plan) {
+    if (!requireAuth()) return;
     Get.toNamed('/add-plan', arguments: plan);
   }
 
@@ -587,10 +596,11 @@ class StudyPlannerController extends GetxController {
   }
 
   Future<void> togglePlanAlarms(StudyPlan plan, bool enabled) async {
-    final premium = Get.find<PremiumService>();
-    if (!premium.isPremium) {
-      await premium.ensurePremium(feature: 'advanced alarms');
-      return;
+    if (enabled) {
+      final premium = Get.find<PremiumService>();
+      if (!await premium.ensurePremium(feature: 'planner alarms')) {
+        return;
+      }
     }
     var alarms = plan.alarms;
     if (enabled && alarms.isEmpty) {
@@ -605,10 +615,11 @@ class StudyPlannerController extends GetxController {
     required bool enabled,
     required List<StudyPlanAlarm> alarms,
   }) async {
-    final premium = Get.find<PremiumService>();
-    if (!premium.isPremium) {
-      await premium.ensurePremium(feature: 'advanced alarms');
-      return;
+    if (enabled) {
+      final premium = Get.find<PremiumService>();
+      if (!await premium.ensurePremium(feature: 'planner alarms')) {
+        return;
+      }
     }
     await StudyPlannerReminderPermissions.ensureBeforeScheduling();
     final updated = plan.copyWith(alarmsEnabled: enabled, alarms: alarms);

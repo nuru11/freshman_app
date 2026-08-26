@@ -35,9 +35,7 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  MyApp({super.key});
-
-  final service = Get.find<AuthService>();
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -174,9 +172,7 @@ class MyApp extends StatelessWidget {
           }),
         ),
       ],
-      initialRoute: service.isAuthenticated
-          ? VIEWS.home.path
-          : VIEWS.login.path,
+      initialRoute: VIEWS.home.path,
     );
   }
 }

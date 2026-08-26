@@ -6,6 +6,7 @@ import 'package:vector_academy/components/components.dart';
 import 'package:vector_academy/utils/utils.dart';
 import 'package:vector_academy/services/premium_service.dart';
 import 'package:vector_academy/views/study_planner/plan_alarms_sheet.dart';
+import 'package:vector_academy/views/study_planner/notify_countdown.dart';
 
 class StudyPlannerPage extends StatelessWidget {
   const StudyPlannerPage({super.key, this.embeddedInHub = false});
@@ -431,6 +432,14 @@ class StudyPlannerPage extends StatelessWidget {
                       ],
                     ],
                   ),
+                  if (plan.alarmsEnabled &&
+                      Get.find<PremiumService>().isPremium) ...[
+                    const SizedBox(height: 6),
+                    NotifyCountdownLabel(
+                      fireAt: plan.soonestNotificationAt(),
+                      alarmsOn: true,
+                    ),
+                  ],
                   if (plan.isRepeating) ...[
                     const SizedBox(height: 8),
                     Row(
@@ -466,7 +475,8 @@ class StudyPlannerPage extends StatelessWidget {
               child: Column(
               children: [
                 Switch(
-                  value: plan.alarmsEnabled,
+                  value: plan.alarmsEnabled &&
+                      Get.find<PremiumService>().isPremium,
                   activeThumbColor: primaryColor,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   onChanged: (value) =>
@@ -476,7 +486,7 @@ class StudyPlannerPage extends StatelessWidget {
                   onTap: () async {
                     final premium = Get.find<PremiumService>();
                     if (!await premium.ensurePremium(
-                      feature: 'advanced alarms',
+                      feature: 'planner alarms',
                     )) {
                       return;
                     }
@@ -493,7 +503,10 @@ class StudyPlannerPage extends StatelessWidget {
                     'Alarm',
                     style: TextStyle(
                       fontSize: 10,
-                      color: plan.alarmsEnabled ? primaryColor : onSurfaceVariant,
+                      color: plan.alarmsEnabled &&
+                              Get.find<PremiumService>().isPremium
+                          ? primaryColor
+                          : onSurfaceVariant,
                     ),
                   ),
                 ),

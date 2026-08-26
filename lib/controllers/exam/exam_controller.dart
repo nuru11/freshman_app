@@ -50,6 +50,10 @@ class ExamController extends GetxController {
   void selectExamSection(ExamSection section) {
     if (_examSection == section) return;
 
+    if (section != ExamSection.exams && !requireAuth()) {
+      return;
+    }
+
     if (section == ExamSection.standings) {
       _ensureLeaderboardController();
     } else if (section == ExamSection.myResults) {
@@ -189,14 +193,14 @@ class ExamController extends GetxController {
   }
 
   void startExam(int examId) {
-    // Navigate to exam detail page
+    if (!requireAuth()) return;
     Get.to(
       () => ExamDetailPage(exam: _exams.firstWhere((e) => e.id == examId)),
     );
   }
 
   void navigateToExamDetail(int examId) {
-    // Navigate to exam detail page
+    if (!requireAuth()) return;
     Get.to(
       () => ExamDetailPage(exam: _exams.firstWhere((e) => e.id == examId)),
     );

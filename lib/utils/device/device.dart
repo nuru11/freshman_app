@@ -37,6 +37,11 @@ class UserDevice {
 
   static const String _unknown = 'unknown';
 
+  static void clearCache() {
+    _cached = null;
+    _cachedForPhone = null;
+  }
+
   static String getAndroidVersion() {
     return '1.0.0';
   }
@@ -51,7 +56,7 @@ class UserDevice {
   }
 
   /// Resolves a stable install id:
-  /// 1) Hive (survives OS updates once written)
+  /// 1) Hive (survives OS updates once written) — never persist a guest id
   /// 2) Platform-specific new id (see [_resolveNewDeviceId])
   static Future<DeviceInfo> getDeviceInfo(String phoneNumber) async {
     if (_cached != null && _cachedForPhone == phoneNumber) {
@@ -60,14 +65,26 @@ class UserDevice {
 
     final storedId = await _storage.getDeviceId();
     final metadata = await _readMetadataOnly();
+    final isGuest = phoneNumber.trim().isEmpty;
 
     late final String resolvedId;
 
-    if (storedId != null && storedId.isNotEmpty) {
-      resolvedId = await _maybeMigrateStoredId(storedId, phoneNumber);
+    if (isGuest) {
+      if (storedId != null && storedId.isNotEmpty) {
+        resolvedId = storedId;
+      } else {
+        resolvedId = await _resolveNewDeviceId(phoneNumber);
+      }
     } else {
-      resolvedId = await _resolveNewDeviceId(phoneNumber);
-      await _storage.setDeviceId(resolvedId);
+      final guestHash = await deviceHash('');
+      final storedIsGuestMinted =
+          storedId == null || storedId.isEmpty || storedId == guestHash;
+      if (storedIsGuestMinted) {
+        resolvedId = await _resolveNewDeviceId(phoneNumber);
+        await _storage.setDeviceId(resolvedId);
+      } else {
+        resolvedId = await _maybeMigrateStoredId(storedId, phoneNumber);
+      }
     }
 
     final info = DeviceInfo(
@@ -112,8 +129,7 @@ class UserDevice {
   /// Always uses a secure random id — never IDFV/legacy — so a taken IDFV cannot
   /// be re-selected on the same phone.
   static Future<DeviceInfo> remintDeviceId(String phoneNumber) async {
-    _cached = null;
-    _cachedForPhone = null;
+    clearCache();
     await _storage.clear();
 
     final metadata = await _readMetadataOnly();

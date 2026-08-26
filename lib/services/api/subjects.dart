@@ -9,13 +9,15 @@ class SubjectsService extends GetxController {
 
   Future<List<Subject>> getSubjects(
     String deviceId, {
-    required int gradeId,
+    int? gradeId,
   }) async {
     try {
       final package = Uri.encodeQueryComponent(backendAppPackage);
+      final gradeQuery =
+          gradeId != null && gradeId > 0 ? 'grade=$gradeId&' : '';
       final response = await apiClient.get(
-        '/app/subjects?grade=$gradeId&device=$deviceId&app_package=$package',
-        authenticated: true,
+        '/app/subjects?${gradeQuery}device=$deviceId&app_package=$package',
+        authenticated: BaseApiClient.accessToken.isNotEmpty,
       );
       logger.i('Subjects response');
       if (response.statusCode == 200) {

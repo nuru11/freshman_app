@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/services/services.dart';
 import 'package:vector_academy/services/api/exceptions.dart';
-import 'package:vector_academy/views/views.dart';
 import 'package:vector_academy/services/api/device.dart';
 import 'package:vector_academy/utils/utils.dart';
 
@@ -15,6 +14,13 @@ class LoginController extends GetxController {
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+  Map<String, dynamic>? _redirectArgs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _redirectArgs = captureAuthRedirectArgs();
+  }
 
   void login() async {
     if (formKey.currentState!.validate()) {
@@ -42,7 +48,7 @@ class LoginController extends GetxController {
           logger.w('Device registration failed after login: $e');
         }
 
-        Get.offAllNamed(VIEWS.home.path);
+        navigateAfterAuth(captureAuthRedirectArgs() ?? _redirectArgs);
         AppSnackbar.showSuccessAfterNav('Success', 'Login successful!');
       } on ApiException catch (e) {
         AppSnackbar.showError(

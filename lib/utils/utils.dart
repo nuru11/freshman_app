@@ -5,9 +5,11 @@ export 'init.dart';
 export 'snackbar_utils.dart';
 export 'share_utils.dart';
 export 'navigation_utils.dart';
+export 'auth_guard.dart';
 export 'image_picker_permissions.dart';
 export 'labels.dart';
 export 'ethiopian_time.dart';
+export 'app_clock.dart';
 import 'package:logger/logger.dart';
 
 final logger = Logger(

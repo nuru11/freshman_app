@@ -300,22 +300,23 @@ class DeepLinkService {
 
   /// Navigate to a route
   void _navigateToRoute(String route) {
-    // Check if user is logged in
     final authService = Get.find<AuthService>();
-    if (!authService.isAuthenticated &&
-        route != VIEWS.login.path &&
-        route != VIEWS.register.path) {
-      // User not logged in, navigate to login first
-      Get.offAllNamed(VIEWS.login.path);
-    } else if (route == VIEWS.register.path) {
+    if (!authService.isAuthenticated && route == VIEWS.payments.path) {
+      Get.toNamed(
+        VIEWS.register.path,
+        arguments: {
+          'returnRoute': VIEWS.payments.path,
+        },
+      );
+      return;
+    }
+
+    if (route == VIEWS.home.path ||
+        route == VIEWS.login.path ||
+        route == VIEWS.register.path) {
       Get.offAllNamed(route);
     } else {
-      // User is logged in or navigating to login, proceed with navigation
-      if (route == VIEWS.home.path) {
-        Get.offAllNamed(route);
-      } else {
-        Get.toNamed(route);
-      }
+      Get.toNamed(route);
     }
   }
 
@@ -386,6 +387,7 @@ class DeepLinkService {
   }
 
   void _openExamDetail(Exam exam) {
+    if (!requireAuth()) return;
     if (Get.currentRoute == VIEWS.examDetail.path) {
       Get.off(() => ExamDetailPage(exam: exam));
     } else {
