@@ -1,5 +1,4 @@
 import 'package:get/get.dart';
-import 'package:vector_academy/views/views.dart';
 import 'package:vector_academy/services/services.dart';
 import 'package:vector_academy/utils/home_tab_controllers.dart';
 import 'package:vector_academy/utils/utils.dart';
@@ -47,6 +46,6 @@ class NavigationDrawerController extends GetxController {
   void logout() async {
     await Get.find<AuthService>().logout();
     clearHomeTabControllers();
-    Get.offAllNamed(VIEWS.home.path);
+    Get.offAllNamed(startupRoute);
   }
 }

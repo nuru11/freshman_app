@@ -172,7 +172,7 @@ class MyApp extends StatelessWidget {
           }),
         ),
       ],
-      initialRoute: VIEWS.home.path,
+      initialRoute: startupRoute,
     );
   }
 }

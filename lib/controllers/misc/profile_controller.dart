@@ -319,7 +319,7 @@ class ProfileController extends GetxController {
   void logout() async {
     await _authService.logout();
     clearHomeTabControllers();
-    Get.offAllNamed(VIEWS.home.path);
+    Get.offAllNamed(startupRoute);
   }
 
   void showDeleteAccountDialog() {
@@ -513,7 +513,7 @@ class ProfileController extends GetxController {
       );
 
       // Navigate to login and clear all routes
-      Get.offAllNamed(VIEWS.home.path);
+      Get.offAllNamed(startupRoute);
     } catch (e) {
       logger.e('Error deleting account: $e');
 

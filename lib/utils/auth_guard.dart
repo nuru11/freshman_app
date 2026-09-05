@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:vector_academy/services/auth.dart';
+import 'package:vector_academy/utils/constants/constants.dart';
 import 'package:vector_academy/utils/home_tab_controllers.dart';
 import 'package:vector_academy/views/views.dart';
 
@@ -9,6 +10,13 @@ const String authCheckoutArgsKey = 'checkoutArgs';
 bool get isCurrentUserAuthenticated =>
     Get.isRegistered<AuthService>() &&
     Get.find<AuthService>().isAuthenticated;
+
+String get startupRoute {
+  if (is_ios && !isCurrentUserAuthenticated) {
+    return VIEWS.login.path;
+  }
+  return VIEWS.home.path;
+}
 
 bool requireAuth({
   String? returnRoute,
