@@ -117,6 +117,112 @@ Widget buildReferralCodeSection({
   );
 }
 
+Widget buildPurchaseTypeSection({required PaymentController controller}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const SizedBox(height: 16),
+      const Text(
+        'Purchase for',
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          Expanded(
+            child: _purchaseTypeChoice(
+              label: 'For Myself',
+              selected: controller.purchaseForSelf,
+              onTap: () => controller.setPurchaseForSelf(true),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _purchaseTypeChoice(
+              label: 'Gift',
+              selected: !controller.purchaseForSelf,
+              onTap: () => controller.setPurchaseForSelf(false),
+            ),
+          ),
+        ],
+      ),
+      if (!controller.purchaseForSelf) ...[
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: controller.recipientPhoneController,
+          keyboardType: TextInputType.phone,
+          onChanged: controller.setRecipientPhone,
+          decoration: InputDecoration(
+            labelText: 'Recipient phone number',
+            hintText: '9xxxxxxxx',
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        if (controller.recipientLookupStatus == RecipientLookupStatus.loading)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text(
+              'Checking account...',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          )
+        else if (controller.recipientLookupMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              controller.recipientLookupMessage!,
+              style: TextStyle(
+                color:
+                    controller.recipientLookupStatus ==
+                        RecipientLookupStatus.found
+                    ? Colors.green.shade700
+                    : Colors.red.shade600,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+      ],
+    ],
+  );
+}
+
+Widget _purchaseTypeChoice({
+  required String label,
+  required bool selected,
+  required VoidCallback onTap,
+}) {
+  return Material(
+    color: selected ? const Color(0xFF1F2937) : Colors.grey.shade100,
+    borderRadius: BorderRadius.circular(12),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? const Color(0xFF1F2937) : Colors.grey.shade300,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : Colors.black87,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class PaymentPage extends StatelessWidget {
   const PaymentPage({super.key});
 
@@ -383,6 +489,7 @@ class PaymentPage extends StatelessWidget {
                       ),
                     ),
                   ),
+                buildPurchaseTypeSection(controller: controller),
               ],
             ),
           ),
@@ -797,7 +904,9 @@ class PaymentPage extends StatelessWidget {
     if (!requireAuthForPurchase(checkoutArgs: checkoutArgs)) {
       return;
     }
-    controller.beginCheckout(package);
+    if (!controller.beginCheckout(package)) {
+      return;
+    }
     Get.to(() => _PaymentMethodPage(package: package, controller: controller));
   }
 }
@@ -1078,16 +1187,40 @@ class _ReceiptUploadPageState extends State<_ReceiptUploadPage> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.grey.shade300),
                       ),
-                      child: Row(
+                      child: Column(
                         children: [
-                          const Icon(Icons.payment, color: Colors.grey),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Payment Method: ${controller.selectedPaymentMethod?.bankName ?? 'Not selected'}',
-                              style: TextStyle(color: Colors.grey.shade700),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                          Row(
+                            children: [
+                              const Icon(Icons.payment, color: Colors.grey),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Payment Method: ${controller.selectedPaymentMethod?.bankName ?? 'Not selected'}',
+                                  style: TextStyle(color: Colors.grey.shade700),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(
+                                controller.purchaseForSelf
+                                    ? Icons.person_outline
+                                    : Icons.card_giftcard_outlined,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  controller.purchaseForSelf
+                                      ? 'Course for: Myself'
+                                      : 'Gift for: ${controller.recipientPhone}',
+                                  style: TextStyle(color: Colors.grey.shade700),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

@@ -125,6 +125,30 @@ class PaymentService extends GetxController {
     }
   }
 
+  Future<void> lookupGiftRecipient(String phone) async {
+    try {
+      final response = await apiClient.get(
+        '/app/gift-recipients/lookup/',
+        authenticated: true,
+        queryParameters: {'phone': phone},
+      );
+      if (response.statusCode == 200) return;
+      throw ApiException(
+        ApiErrorMessage.fromData(response.data) ??
+            'No active account is registered with that phone number.',
+      );
+    } catch (e) {
+      logger.e('Error looking up gift recipient: $e');
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        ApiErrorMessage.from(
+          e,
+          fallback: 'Could not look up that phone number.',
+        ),
+      );
+    }
+  }
+
   Future<Payment> uploadReceipt({
     required File file,
     required int package,
@@ -132,6 +156,7 @@ class PaymentService extends GetxController {
     required String device,
     required double amount,
     String? referralCode,
+    String? recipientPhone,
   }) async {
     final deviceId = device.trim();
     if (deviceId.isEmpty) {
@@ -148,6 +173,9 @@ class PaymentService extends GetxController {
     // Add referral_code if provided (convert to uppercase as per API spec)
     if (referralCode != null && referralCode.trim().isNotEmpty) {
       additionalData['referral_code'] = referralCode.trim().toUpperCase();
+    }
+    if (recipientPhone != null && recipientPhone.trim().isNotEmpty) {
+      additionalData['recipient_phone'] = recipientPhone.trim();
     }
     
     final response = await apiClient.postMultipart(
