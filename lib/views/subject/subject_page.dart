@@ -110,7 +110,7 @@ class _CourseListRow extends StatelessWidget {
                 Text(subject.name, style: theme.textTheme.titleSmall),
                 const SizedBox(height: 2),
                 Text(
-                  '${subject.chapters.length} chapters',
+                  '${subject.chapters.where((chapter) => chapter.isNumbered).length} chapters',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: onSurfaceVariant,
                   ),

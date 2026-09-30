@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/services/auth.dart';
 import 'package:vector_academy/utils/constants/constants.dart';
@@ -16,6 +17,21 @@ String get startupRoute {
     return VIEWS.login.path;
   }
   return VIEWS.home.path;
+}
+
+void goToStartupRoute() {
+  final route = startupRoute;
+  if (route == VIEWS.login.path) {
+    Get.offAllNamed(route);
+    Future.microtask(clearHomeTabControllers);
+    return;
+  }
+
+  Get.offAll(() => const Scaffold(body: SizedBox.shrink()));
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    clearHomeTabControllers();
+    Get.offAllNamed(VIEWS.home.path);
+  });
 }
 
 bool requireAuth({

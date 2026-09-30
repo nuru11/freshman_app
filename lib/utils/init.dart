@@ -26,6 +26,7 @@ Future<void> initialize() async {
   await HiveAppHeaderStorage().init();
   await HiveNewsStorage().init();
   await HiveLeaderboardCacheStorage().init();
+  await HiveReadingPlanStorage().init();
   await Get.putAsync(() async {
     final auth = AuthService();
     await auth.loadUser();

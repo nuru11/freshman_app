@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:vector_academy/components/components.dart';
+import 'package:vector_academy/components/ui/content_protection_layer.dart';
 import '../../controllers/misc/pdf_reader_controller.dart';
 import 'dart:io';
 
@@ -62,7 +63,14 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
     final theme = Theme.of(context);
 
     return Obx(() {
-      return Semantics(
+      if (widget.protectContent && _controller.isScreenCaptured.value) {
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: RecordingBlockedOverlay(onBack: Get.back),
+        );
+      }
+
+      final reader = Semantics(
         container: true,
         label: _controller.isReady
             ? _controller.pageStatusLabel
@@ -71,7 +79,12 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
           backgroundColor: theme.colorScheme.surface,
           appBar: _controller.isReadMode
               ? null
-              : _buildAppBar(context, _controller, theme, widget.showShareButton),
+              : _buildAppBar(
+                  context,
+                  _controller,
+                  theme,
+                  widget.showShareButton,
+                ),
           body: Column(
             children: [
               if (_controller.announcement.isNotEmpty)
@@ -91,6 +104,17 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
                   enableListen: widget.enableListen,
                 ),
         ),
+      );
+
+      if (!widget.protectContent) return reader;
+
+      final label = _controller.watermarkLabel;
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          reader,
+          if (label.isNotEmpty) MovingWatermark(label: label),
+        ],
       );
     });
   }
@@ -146,10 +170,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
           }),
         IconButton(
           onPressed: controller.toggleReadMode,
-          icon: const Icon(
-            Icons.lock_open,
-            semanticLabel: 'Enter read mode',
-          ),
+          icon: const Icon(Icons.lock_open, semanticLabel: 'Enter read mode'),
           tooltip: 'Lock / Read Mode',
         ),
         Obx(() {
@@ -468,7 +489,11 @@ class _PDFView extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.touch_app, color: Colors.white, size: 16),
+                            Icon(
+                              Icons.touch_app,
+                              color: Colors.white,
+                              size: 16,
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'Tap to exit',
@@ -514,78 +539,78 @@ class _PDFReaderBottomNavigation extends StatelessWidget {
       return SafeArea(
         top: false,
         child: Container(
-        padding: EdgeInsets.fromLTRB(16, 12, 16, 16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(
-            top: BorderSide(
-              color: theme.colorScheme.outline.withValues(alpha: 0.2),
-              width: 1,
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            border: Border(
+              top: BorderSide(
+                color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                width: 1,
+              ),
             ),
           ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Semantics(
-                  button: true,
-                  label: 'Previous page',
-                  child: IconButton(
-                    onPressed: controller.currentPage > 0
-                        ? controller.goToPreviousPage
-                        : null,
-                    tooltip: 'Previous page',
-                    icon: Icon(Icons.chevron_left),
-                    style: IconButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary.withValues(
-                        alpha: 0.1,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Semantics(
+                    button: true,
+                    label: 'Previous page',
+                    child: IconButton(
+                      onPressed: controller.currentPage > 0
+                          ? controller.goToPreviousPage
+                          : null,
+                      tooltip: 'Previous page',
+                      icon: Icon(Icons.chevron_left),
+                      style: IconButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary.withValues(
+                          alpha: 0.1,
+                        ),
+                        minimumSize: const Size(48, 48),
                       ),
-                      minimumSize: const Size(48, 48),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: Slider(
-                    value: controller.currentPage.toDouble(),
-                    max: (controller.totalPages - 1).toDouble(),
-                    divisions: controller.totalPages > 1
-                        ? controller.totalPages - 1
-                        : null,
-                    label:
-                        'Page ${controller.currentPage + 1} of ${controller.totalPages}',
-                    onChanged: (value) {
-                      controller.goToPage(value.toInt());
-                    },
-                  ),
-                ),
-                Semantics(
-                  button: true,
-                  label: 'Next page',
-                  child: IconButton(
-                    onPressed:
-                        controller.currentPage < controller.totalPages - 1
-                        ? controller.goToNextPage
-                        : null,
-                    tooltip: 'Next page',
-                    icon: Icon(Icons.chevron_right),
-                    style: IconButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary.withValues(
-                        alpha: 0.1,
-                      ),
-                      minimumSize: const Size(48, 48),
+                  Expanded(
+                    child: Slider(
+                      value: controller.currentPage.toDouble(),
+                      max: (controller.totalPages - 1).toDouble(),
+                      divisions: controller.totalPages > 1
+                          ? controller.totalPages - 1
+                          : null,
+                      label:
+                          'Page ${controller.currentPage + 1} of ${controller.totalPages}',
+                      onChanged: (value) {
+                        controller.goToPage(value.toInt());
+                      },
                     ),
                   ),
-                ),
+                  Semantics(
+                    button: true,
+                    label: 'Next page',
+                    child: IconButton(
+                      onPressed:
+                          controller.currentPage < controller.totalPages - 1
+                          ? controller.goToNextPage
+                          : null,
+                      tooltip: 'Next page',
+                      icon: Icon(Icons.chevron_right),
+                      style: IconButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary.withValues(
+                          alpha: 0.1,
+                        ),
+                        minimumSize: const Size(48, 48),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (enableListen) ...[
+                SizedBox(height: 4),
+                _ListenBar(controller: controller, theme: theme),
               ],
-            ),
-            if (enableListen) ...[
-              SizedBox(height: 4),
-              _ListenBar(controller: controller, theme: theme),
             ],
-          ],
-        ),
+          ),
         ),
       );
     });

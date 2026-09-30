@@ -211,23 +211,25 @@ class ProfilePage extends StatelessWidget {
 
           SizedBox(height: 40),
 
-          Text(
-            'Become an Agent',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
+          if (!_hidesAgentProgram(controller.user?.phoneNumber)) ...[
+            Text(
+              'Become an Agent',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
             ),
-          ),
-          SizedBox(height: 20),
-          _buildActionButton(
-            context,
-            Icons.business_center,
-            "Agent Program",
-            "Apply to become an agent and earn coins",
-            () => Get.toNamed(VIEWS.agentStatus.path),
-          ),
-          SizedBox(height: 40),
+            SizedBox(height: 20),
+            _buildActionButton(
+              context,
+              Icons.business_center,
+              "Agent Program",
+              "Apply to become an agent and earn coins",
+              () => Get.toNamed(VIEWS.agentStatus.path),
+            ),
+            SizedBox(height: 40),
+          ],
 
           // Action Buttons
           Text(
@@ -499,5 +501,14 @@ class ProfilePage extends StatelessWidget {
       ),
       child: Icon(Icons.person, size: 60, color: Colors.blue[700]),
     );
+  }
+
+  static const String _hiddenAgentPhoneDigits = '985858585';
+
+  bool _hidesAgentProgram(String? phoneNumber) {
+    if (phoneNumber == null || phoneNumber.isEmpty) return false;
+    final digits = phoneNumber.replaceAll(RegExp(r'\D'), '');
+    return digits == _hiddenAgentPhoneDigits ||
+        digits.endsWith(_hiddenAgentPhoneDigits);
   }
 }

@@ -4,6 +4,44 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 part 'exam.g.dart';
 
+class ExamGrouping {
+  final int id;
+  final String name;
+  final int sortOrder;
+
+  const ExamGrouping({
+    required this.id,
+    required this.name,
+    this.sortOrder = 0,
+  });
+
+  factory ExamGrouping.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    return ExamGrouping(
+      id: id is int ? id : int.parse(id.toString()),
+      name: json['name']?.toString() ?? '',
+      sortOrder: json['sort_order'] is int
+          ? json['sort_order'] as int
+          : int.tryParse('${json['sort_order']}') ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'sort_order': sortOrder,
+  };
+}
+
+ExamGrouping? examGroupingFromDynamic(Object? value) {
+  if (value == null) return null;
+  if (value is Map) {
+    return ExamGrouping.fromJson(Map<String, dynamic>.from(value));
+  }
+  if (value is ExamGrouping) return value;
+  return null;
+}
+
 @JsonSerializable()
 class Exam {
   final int id;
@@ -25,6 +63,9 @@ class Exam {
   final DateTime updatedAt;
   @JsonKey(name: 'mode_type')
   final String modeType;
+  @JsonKey(name: 'exam_category')
+  final ExamGrouping? examCategory;
+  final ExamGrouping? section;
   @JsonKey(name: 'is_downloaded')
   bool isDownloaded;
 
@@ -55,6 +96,8 @@ class Exam {
     this.isDownloaded = false,
     this.questions = const [],
     this.modeType = 'both',
+    this.examCategory,
+    this.section,
   });
 
   factory Exam.fromJson(Map<String, dynamic> json) => _$ExamFromJson(json);
@@ -121,6 +164,9 @@ class ExamTypeAdapter implements TypeAdapter<Exam> {
       image: json_['image'],
       totalQuestions: json_['total_questions'],
       year: json_['year'],
+      modeType: json_['mode_type'] ?? 'both',
+      examCategory: examGroupingFromDynamic(json_['exam_category']),
+      section: examGroupingFromDynamic(json_['section']),
     );
     // hydrate extra fields if present
     exam.isCompleted = json_['is_completed'] ?? false;

@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:vector_academy/components/components.dart';
 import 'package:vector_academy/controllers/controllers.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/utils/navigation_utils.dart';
+
+String _normalizedQuery(String query) => query.trim().toLowerCase();
+
+bool _matchesText(String value, String query) {
+  final normalized = _normalizedQuery(query);
+  if (normalized.isEmpty) return true;
+  return value.toLowerCase().contains(normalized);
+}
 
 class DownloadsPage extends StatefulWidget {
   const DownloadsPage({super.key});
@@ -16,10 +25,13 @@ class _DownloadsPageState extends State<DownloadsPage>
   late TabController _tabController;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  late final TextEditingController _searchController;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
+    _searchController = TextEditingController();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       setState(() {}); // Rebuild to update the clear button
@@ -36,6 +48,7 @@ class _DownloadsPageState extends State<DownloadsPage>
 
   @override
   void dispose() {
+    _searchController.dispose();
     _tabController.dispose();
     _animationController.dispose();
     super.dispose();
@@ -63,6 +76,7 @@ class _DownloadsPageState extends State<DownloadsPage>
         ),
         body: Column(
           children: [
+            _buildSearchBar(),
             _buildTabBar(context),
             Expanded(child: _buildTabContent(context, controller)),
           ],
@@ -176,6 +190,19 @@ class _DownloadsPageState extends State<DownloadsPage>
     );
   }
 
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: SearchTextField(
+        controller: _searchController,
+        hint: 'Search downloads',
+        onChanged: (value) {
+          setState(() => _searchQuery = value);
+        },
+      ),
+    );
+  }
+
   Widget _buildTabBar(BuildContext context) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -244,9 +271,9 @@ class _DownloadsPageState extends State<DownloadsPage>
       child: TabBarView(
         controller: _tabController,
         children: [
-          _VideosTab(controller: controller),
-          _ExamsTab(controller: controller),
-          _NotesTab(controller: controller),
+          _VideosTab(controller: controller, query: _searchQuery),
+          _ExamsTab(controller: controller, query: _searchQuery),
+          _NotesTab(controller: controller, query: _searchQuery),
         ],
       ),
     );
@@ -255,8 +282,9 @@ class _DownloadsPageState extends State<DownloadsPage>
 
 class _VideosTab extends StatelessWidget {
   final DownloadsController controller;
+  final String query;
 
-  const _VideosTab({required this.controller});
+  const _VideosTab({required this.controller, required this.query});
 
   @override
   Widget build(BuildContext context) {
@@ -274,13 +302,24 @@ class _VideosTab extends StatelessWidget {
           );
         }
 
+        final videos = controller.allVideos
+            .where((video) => _matchesText(video.title, query))
+            .toList();
+        if (videos.isEmpty) {
+          return _buildEmptyState(
+            icon: Icons.search_off_rounded,
+            title: 'No results',
+            subtitle: 'Nothing matches "${query.trim()}"',
+          );
+        }
+
         return Container(
           margin: const EdgeInsets.all(24),
           child: ListView.builder(
             physics: const BouncingScrollPhysics(),
-            itemCount: controller.allVideos.length,
+            itemCount: videos.length,
             itemBuilder: (context, index) {
-              final video = controller.allVideos[index];
+              final video = videos[index];
               return _buildVideoItem(context, video, controller, index);
             },
           ),
@@ -669,8 +708,9 @@ class _VideosTab extends StatelessWidget {
 
 class _ExamsTab extends StatelessWidget {
   final DownloadsController controller;
+  final String query;
 
-  const _ExamsTab({required this.controller});
+  const _ExamsTab({required this.controller, required this.query});
 
   @override
   Widget build(BuildContext context) {
@@ -680,7 +720,7 @@ class _ExamsTab extends StatelessWidget {
           return _buildLoadingState('Loading exams...');
         }
 
-        var unlockedExams = controller.allExams
+        final unlockedExams = controller.allExams
             .where((e) => !controller.isExamLocked(e))
             .toList();
         if (unlockedExams.isEmpty) {
@@ -691,13 +731,31 @@ class _ExamsTab extends StatelessWidget {
           );
         }
 
+        final normalized = _normalizedQuery(query);
+        final exams = normalized.isEmpty
+            ? unlockedExams
+            : unlockedExams
+                  .where(
+                    (exam) =>
+                        exam.name.toLowerCase().contains(normalized) ||
+                        exam.examType.toLowerCase().contains(normalized),
+                  )
+                  .toList();
+        if (exams.isEmpty) {
+          return _buildEmptyState(
+            icon: Icons.search_off_rounded,
+            title: 'No results',
+            subtitle: 'Nothing matches "${query.trim()}"',
+          );
+        }
+
         return Container(
           margin: const EdgeInsets.all(24),
           child: ListView.builder(
             physics: const BouncingScrollPhysics(),
-            itemCount: unlockedExams.length,
+            itemCount: exams.length,
             itemBuilder: (context, index) {
-              final exam = unlockedExams[index];
+              final exam = exams[index];
               return _buildExamItem(context, exam, controller, index);
             },
           ),
@@ -1053,8 +1111,9 @@ class _ExamsTab extends StatelessWidget {
 
 class _NotesTab extends StatelessWidget {
   final DownloadsController controller;
+  final String query;
 
-  const _NotesTab({required this.controller});
+  const _NotesTab({required this.controller, required this.query});
 
   @override
   Widget build(BuildContext context) {
@@ -1072,13 +1131,24 @@ class _NotesTab extends StatelessWidget {
           );
         }
 
+        final notes = controller.allNotes
+            .where((note) => _matchesText(note.title, query))
+            .toList();
+        if (notes.isEmpty) {
+          return _buildEmptyState(
+            icon: Icons.search_off_rounded,
+            title: 'No results',
+            subtitle: 'Nothing matches "${query.trim()}"',
+          );
+        }
+
         return Container(
           margin: const EdgeInsets.all(24),
           child: ListView.builder(
             physics: const BouncingScrollPhysics(),
-            itemCount: controller.allNotes.length,
+            itemCount: notes.length,
             itemBuilder: (context, index) {
-              final note = controller.allNotes[index];
+              final note = notes[index];
               return _buildNoteItem(context, note, controller, index);
             },
           ),

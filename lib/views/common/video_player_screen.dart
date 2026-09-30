@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
+import 'package:vector_academy/components/ui/content_protection_layer.dart';
 import 'package:vector_academy/controllers/controllers.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -55,6 +56,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           children: [
             Center(
               child: Obx(() {
+                if (controller.isScreenCaptured.value) {
+                  return const SizedBox.shrink();
+                }
                 if (controller.isInitialized.value) {
                   return AspectRatio(
                     aspectRatio: controller.videoController.value.aspectRatio,
@@ -64,49 +68,66 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 return _buildStatusOverlay(theme);
               }),
             ),
-            Obx(
-              () => controller.isInitialized.value
-                  ? Positioned.fill(
-                      child: GestureDetector(
-                        onTap: controller.toggleControls,
-                        child: Obx(
-                          () => AnimatedOpacity(
-                            opacity: controller.showControls.value ? 1.0 : 0.0,
-                            duration: const Duration(milliseconds: 300),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.black.withValues(alpha: 0.7),
-                                    Colors.transparent,
-                                    Colors.transparent,
-                                    Colors.black.withValues(alpha: 0.7),
-                                  ],
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  _buildTopControls(
-                                    theme,
-                                    showFullscreen: true,
-                                  ),
-                                  _buildCenterPlayButton(),
-                                  _buildBottomControls(theme, context),
-                                ],
-                              ),
+            Obx(() {
+              if (controller.isScreenCaptured.value) {
+                return const SizedBox.shrink();
+              }
+              if (controller.isInitialized.value) {
+                return Positioned.fill(
+                  child: GestureDetector(
+                    onTap: controller.toggleControls,
+                    child: Obx(
+                      () => AnimatedOpacity(
+                        opacity: controller.showControls.value ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 300),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.7),
+                                Colors.transparent,
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.7),
+                              ],
                             ),
+                          ),
+                          child: Column(
+                            children: [
+                              _buildTopControls(theme, showFullscreen: true),
+                              _buildCenterPlayButton(),
+                              _buildBottomControls(theme, context),
+                            ],
                           ),
                         ),
                       ),
-                    )
-                  : Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: _buildTopControls(theme, showFullscreen: false),
                     ),
+                  ),
+                );
+              }
+              return Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: _buildTopControls(theme, showFullscreen: false),
+              );
+            }),
+            Obx(() {
+              final label = controller.watermarkLabel;
+              if (!controller.isInitialized.value ||
+                  controller.isScreenCaptured.value ||
+                  label.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return Positioned.fill(child: MovingWatermark(label: label));
+            }),
+            Obx(
+              () => controller.isScreenCaptured.value
+                  ? Positioned.fill(
+                      child: RecordingBlockedOverlay(onBack: controller.goBack),
+                    )
+                  : const SizedBox.shrink(),
             ),
           ],
         ),

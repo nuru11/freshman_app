@@ -27,6 +27,8 @@ Exam _$ExamFromJson(Map<String, dynamic> json) => Exam(
           .toList() ??
       const [],
   modeType: json['mode_type'] as String? ?? 'both',
+  examCategory: examGroupingFromDynamic(json['exam_category']),
+  section: examGroupingFromDynamic(json['section']),
 );
 
 Map<String, dynamic> _$ExamToJson(Exam instance) => <String, dynamic>{
@@ -42,6 +44,8 @@ Map<String, dynamic> _$ExamToJson(Exam instance) => <String, dynamic>{
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
   'mode_type': instance.modeType,
+  'exam_category': instance.examCategory?.toJson(),
+  'section': instance.section?.toJson(),
   'is_downloaded': instance.isDownloaded,
   'questions': instance.questions,
 };

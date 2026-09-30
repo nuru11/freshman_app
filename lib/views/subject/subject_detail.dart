@@ -13,7 +13,8 @@ class SubjectDetail extends StatelessWidget {
 
     return GetBuilder<SubjectDetailController>(
       builder: (controller) {
-        final count = controller.chapters.length;
+        final count =
+            controller.chapters.where((chapter) => chapter.isNumbered).length;
         final subtitle = controller.isLoading
             ? 'Loading units…'
             : '$count ${count == 1 ? 'chapter' : 'chapters'}';
@@ -42,6 +43,7 @@ class SubjectDetail extends StatelessWidget {
                         final chapter = controller.chapters[index];
                         return _ChapterRow(
                           chapter: chapter,
+                          siblings: controller.chapters,
                           locked: controller.isChapterLocked(chapter),
                           isPreview: controller.isPreviewChapter(chapter),
                           onTap: () => controller.handleChapterTap(chapter),
@@ -57,12 +59,14 @@ class SubjectDetail extends StatelessWidget {
 class _ChapterRow extends StatelessWidget {
   const _ChapterRow({
     required this.chapter,
+    required this.siblings,
     required this.locked,
     required this.isPreview,
     required this.onTap,
   });
 
   final Chapter chapter;
+  final List<Chapter> siblings;
   final bool locked;
   final bool isPreview;
   final VoidCallback onTap;
@@ -91,26 +95,37 @@ class _ChapterRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: borderColor),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Unit',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: locked ? onSurfaceVariant : primaryColor,
-                    fontWeight: FontWeight.w600,
+            child: chapter.isNumbered
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Unit',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: locked ? onSurfaceVariant : primaryColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        '${chapter.displayNumber(siblings)}',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: locked ? onSurfaceVariant : primaryColor,
+                          fontWeight: FontWeight.w700,
+                          height: 1.1,
+                        ),
+                      ),
+                    ],
+                  )
+                : Center(
+                    child: Text(
+                      chapter.isIntro ? 'Intro' : 'Outro',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: locked ? onSurfaceVariant : primaryColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                ),
-                Text(
-                  '${chapter.chapterNumber}',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: locked ? onSurfaceVariant : primaryColor,
-                    fontWeight: FontWeight.w700,
-                    height: 1.1,
-                  ),
-                ),
-              ],
-            ),
           ),
           const SizedBox(width: 12),
           Expanded(

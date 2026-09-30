@@ -1,5 +1,4 @@
 import 'package:vector_academy/utils/storages/storages.dart';
-import 'package:vector_academy/utils/home_tab_controllers.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/views/views.dart';
 import 'package:vector_academy/services/services.dart';
@@ -318,8 +317,7 @@ class ProfileController extends GetxController {
 
   void logout() async {
     await _authService.logout();
-    clearHomeTabControllers();
-    Get.offAllNamed(startupRoute);
+    goToStartupRoute();
   }
 
   void showDeleteAccountDialog() {
@@ -513,7 +511,7 @@ class ProfileController extends GetxController {
       );
 
       // Navigate to login and clear all routes
-      Get.offAllNamed(startupRoute);
+      goToStartupRoute();
     } catch (e) {
       logger.e('Error deleting account: $e');
 

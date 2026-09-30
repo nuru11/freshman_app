@@ -358,6 +358,11 @@ class HomeDashboardController extends GetxController {
     return _subjectById[chapter.subject]?.name ?? '';
   }
 
+  String chapterProgressLabel(Chapter chapter) {
+    final siblings = _subjectById[chapter.subject]?.chapters ?? const <Chapter>[];
+    return chapter.progressLabel(siblings);
+  }
+
   String getChapterNameById(int chapterId) {
     return _chapterById[chapterId]?.name ?? '';
   }
@@ -429,7 +434,9 @@ class HomeDashboardController extends GetxController {
           (chapter) => _containsAny(normalizedQuery, [
             chapter.name,
             chapter.description,
-            'chapter ${chapter.chapterNumber}',
+            chapter.progressLabel(
+              _subjectById[chapter.subject]?.chapters ?? const [],
+            ).toLowerCase(),
             _subjectById[chapter.subject]?.name,
           ]),
         )

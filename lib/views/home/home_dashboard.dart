@@ -10,6 +10,8 @@ import 'package:vector_academy/flavors/flavor_config.dart';
 import 'package:vector_academy/config/app_config.dart';
 import 'package:vector_academy/config/support_config.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:vector_academy/views/home/home_exam_score_carousel.dart';
+import 'package:vector_academy/views/home/optimal_computer_products_bar.dart';
 
 class HomeDashboard extends StatelessWidget {
   HomeDashboard({super.key});
@@ -28,6 +30,8 @@ class HomeDashboard extends StatelessWidget {
     Get.put(HomeDashboardController());
     Get.put(NavigationDrawerController());
     Get.put(NotificationsController());
+    Get.put(UserScoreController());
+    Get.put(OptimalComputerProductsController());
 
     return GetBuilder<HomeDashboardController>(
       builder: (controller) => Scaffold(
@@ -44,12 +48,25 @@ class HomeDashboard extends StatelessWidget {
               else
                 Expanded(
                   child: RefreshIndicator(
-                    onRefresh: controller.refreshData,
+                    onRefresh: () async {
+                      await controller.refreshData();
+                      if (Get.isRegistered<UserScoreController>()) {
+                        await Get.find<UserScoreController>().refreshResults();
+                      }
+                      if (Get.isRegistered<OptimalComputerProductsController>()) {
+                        await Get.find<OptimalComputerProductsController>()
+                            .loadSlides();
+                      }
+                    },
                     child: CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(
                         parent: BouncingScrollPhysics(),
                       ),
                       slivers: [
+                        const SliverToBoxAdapter(child: HomeExamScoreCarousel()),
+                        const SliverToBoxAdapter(
+                          child: OptimalComputerProductsBar(),
+                        ),
                         SliverToBoxAdapter(
                           child: _buildYearChip(context, controller),
                         ),
@@ -574,7 +591,8 @@ class _CourseTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final chapterCount = subject.chapters.length;
+    final chapterCount =
+        subject.chapters.where((chapter) => chapter.isNumbered).length;
 
     return FreshmanSurfaceCard(
       padding: const EdgeInsets.all(10),

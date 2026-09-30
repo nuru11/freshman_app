@@ -12,13 +12,31 @@ import 'package:vector_academy/utils/utils.dart';
 /// Exam tab body sections: list, competition standings, personal results.
 enum ExamSection { exams, standings, myResults }
 
+class ExamBrowseGroup {
+  final int? id;
+  final String name;
+  final int sortOrder;
+  final int count;
+
+  const ExamBrowseGroup({
+    required this.id,
+    required this.name,
+    required this.sortOrder,
+    required this.count,
+  });
+}
+
 class ExamController extends GetxController {
+  static const uncategorizedCategoryName = 'Uncategorized';
+  static const generalSectionName = 'General';
   final ExamService _examService = ExamService();
   final HiveExamStorage _hiveExamStorage = HiveExamStorage();
   // Completion now handled within HiveExamStorage
   final InternetConnection _internetConnection = InternetConnection();
   bool _isLoading = true;
   bool get isLoading => _isLoading;
+  bool _isOffline = false;
+  bool get isOffline => _isOffline;
   User? _user;
   bool get hasFullAccessOverride =>
       hasFullAccessOverrideForPhone(_user?.phoneNumber);
@@ -107,13 +125,13 @@ class ExamController extends GetxController {
     _internetConnection.onStatusChange.listen((event) {
       if (event == InternetStatus.connected) {
         loadExams();
+      } else {
+        _applyOfflineFilter();
       }
     });
 
-    _hiveExamStorage.listen((event) {
-      _exams = event.where((e) => e.examType != 'quiz').toList();
-      _refreshCompletionBadges();
-      update();
+    _hiveExamStorage.listen((_) {
+      _syncVisibleExams();
     }, 'exams');
 
     HiveSubjectsStorage().listen((event) {
@@ -128,28 +146,51 @@ class ExamController extends GetxController {
     update();
   }
 
+  Future<void> _applyOfflineFilter() async {
+    _isOffline = true;
+    _exams = await _visibleExams();
+    update();
+  }
+
+  Future<void> _syncVisibleExams() async {
+    _exams = await _visibleExams();
+    await _refreshCompletionBadges();
+  }
+
+  Future<List<Exam>> _visibleExams() async {
+    final exams = await _hiveExamStorage.getExams();
+    for (final exam in exams) {
+      exam.isDownloaded = exam.questions.isNotEmpty;
+    }
+
+    return exams.where((exam) {
+      if (!_isExamScreenExam(exam)) return false;
+      if (_isOffline && !hasDownloadedExamContent(exam)) return false;
+      return true;
+    }).toList();
+  }
+
   Future<void> loadExams() async {
     _isLoading = true;
     _error = null;
     update();
 
-    final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
+    _isOffline = !await _internetConnection.hasInternetAccess;
 
     try {
-      final grade = _user?.grade;
-      final exams_ = await _examService.getAvailableExams(
-        device.id,
-        gradeId: grade?.id,
-      );
-      await _hiveExamStorage.setExams(exams_);
-      _exams = (await _hiveExamStorage.getExams())
-          .where((e) => e.examType != 'quiz')
-          .toList();
+      if (!_isOffline) {
+        final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
+        final grade = _user?.grade;
+        final exams_ = await _examService.getAvailableExams(
+          device.id,
+          gradeId: grade?.id,
+        );
+        await _hiveExamStorage.setExams(exams_);
+      }
+      _exams = await _visibleExams();
     } catch (e) {
-      _exams = (await _hiveExamStorage.getExams())
-          .where((e) => e.examType != 'quiz')
-          .toList();
-      if (_exams.isEmpty) {
+      _exams = await _visibleExams();
+      if (!_isOffline && _exams.isEmpty) {
         _error = 'Failed to load exams. Please try again.';
         AppSnackbar.showError('Error', _error!);
       }
@@ -158,14 +199,6 @@ class ExamController extends GetxController {
       await _refreshCompletionBadges();
       update();
     }
-  }
-
-  Future<void> _updateExamDownloadStatus() async {
-    for (var exam in _exams) {
-      final questions = await _hiveExamStorage.getQuestions(exam.id);
-      exam.isDownloaded = questions.isNotEmpty;
-    }
-    update();
   }
 
   Future<void> _refreshCompletionBadges() async {
@@ -178,18 +211,79 @@ class ExamController extends GetxController {
   }
 
   Future<void> selectSubject(int index) async {
-    final subject = _subjects[index];
     _selectedSubjectIndex = index;
-    final exams = await _hiveExamStorage.getExams();
-    if (subject.id == 0) {
-      _exams = exams.where((e) => e.examType != 'quiz').toList();
-    } else {
-      _exams = exams
-          .where((e) => e.subject?.id == subject.id && e.examType != 'quiz')
-          .toList();
+    update();
+  }
+
+  bool _isExamScreenExam(Exam exam) {
+    if (exam.examType == 'quiz') return false;
+    final mode = exam.modeType.toLowerCase();
+    return mode == 'practice' || mode == 'exam_mode' || mode == 'both';
+  }
+
+  int get _selectedSubjectId {
+    if (_subjects.isEmpty ||
+        _selectedSubjectIndex < 0 ||
+        _selectedSubjectIndex >= _subjects.length) {
+      return 0;
     }
-    // Update download status for filtered exams
-    await _updateExamDownloadStatus();
+    return _subjects[_selectedSubjectIndex].id;
+  }
+
+  List<ExamBrowseGroup> get categoryGroups => _groupsFor(null);
+
+  List<ExamBrowseGroup> sectionsForCategory({int? categoryId}) {
+    return _groupsFor(categoryId, sections: true);
+  }
+
+  List<ExamBrowseGroup> _groupsFor(int? categoryId, {bool sections = false}) {
+    final groups = <String, ExamBrowseGroup>{};
+    final counts = <String, int>{};
+    for (final exam in _exams) {
+      if (sections) {
+        final matchesCategory = categoryId == null
+            ? exam.examCategory == null
+            : exam.examCategory?.id == categoryId;
+        if (!matchesCategory) continue;
+      }
+      final grouping = sections ? exam.section : exam.examCategory;
+      final fallbackName = sections
+          ? generalSectionName
+          : uncategorizedCategoryName;
+      final key = grouping == null
+          ? fallbackName
+          : '${sections ? 's' : 'c'}-${grouping.id}';
+      counts[key] = (counts[key] ?? 0) + 1;
+      groups[key] = ExamBrowseGroup(
+        id: grouping?.id,
+        name: grouping?.name ?? fallbackName,
+        sortOrder: grouping?.sortOrder ?? 1 << 20,
+        count: counts[key]!,
+      );
+    }
+    final list = groups.values.toList()
+      ..sort((a, b) {
+        final order = a.sortOrder.compareTo(b.sortOrder);
+        if (order != 0) return order;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+    return list;
+  }
+
+  List<Exam> examsInSection({int? categoryId, int? sectionId}) {
+    final subjectId = _selectedSubjectId;
+    return _exams.where((exam) {
+      final matchesCategory = categoryId == null
+          ? exam.examCategory == null
+          : exam.examCategory?.id == categoryId;
+      if (!matchesCategory) return false;
+      final matchesSection = sectionId == null
+          ? exam.section == null
+          : exam.section?.id == sectionId;
+      if (!matchesSection) return false;
+      if (subjectId != 0 && exam.subject?.id != subjectId) return false;
+      return true;
+    }).toList();
   }
 
   void startExam(int examId) {
@@ -211,7 +305,8 @@ class ExamController extends GetxController {
   }
 
   Future<void> refreshExamDownloadStatus() async {
-    await _updateExamDownloadStatus();
+    _exams = await _visibleExams();
+    update();
   }
 
   Future<List<Exam>> searchExams(String query) async {

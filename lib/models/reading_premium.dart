@@ -28,6 +28,32 @@ class ReadingPlanDocument {
           : DateTime.parse(json['created_at'] as String),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'is_read': isRead,
+      'opened_at': openedAt?.toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
+    };
+  }
+
+  ReadingPlanDocument copyWith({
+    int? id,
+    String? title,
+    bool? isRead,
+    DateTime? openedAt,
+    DateTime? createdAt,
+  }) {
+    return ReadingPlanDocument(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      isRead: isRead ?? this.isRead,
+      openedAt: openedAt ?? this.openedAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }
 
 class ReadingChallenge {

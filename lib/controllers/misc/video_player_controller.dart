@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
+import 'package:vector_academy/utils/screen_capture_guard.dart';
 import 'package:vector_academy/utils/utils.dart';
 import 'package:vector_academy/services/api/exceptions.dart';
 
@@ -27,6 +28,10 @@ class CustomVideoPlayerController extends GetxController {
   final RxString errorMessage = ''.obs;
   final RxBool isFullscreen = false.obs;
   final RxDouble playbackSpeed = 1.0.obs;
+  final ScreenCaptureGuard captureGuard = ScreenCaptureGuard();
+
+  RxBool get isScreenCaptured => captureGuard.isScreenCaptured;
+  String get watermarkLabel => captureGuard.watermarkLabel;
 
   static const List<double> speedOptions = [
     0.5,
@@ -46,6 +51,7 @@ class CustomVideoPlayerController extends GetxController {
 
   bool _isInitializing = false;
   bool _closed = false;
+  bool _resumeAfterCapture = false;
 
   @override
   void onInit() {
@@ -57,12 +63,27 @@ class CustomVideoPlayerController extends GetxController {
       videoId = args['videoId'] ?? 0;
     }
 
+    captureGuard.onCaptureStarted = () {
+      _resumeAfterCapture = isPlaying.value;
+      _controller?.pause();
+    };
+    captureGuard.onCaptureEnded = () {
+      final shouldResume = _resumeAfterCapture;
+      _resumeAfterCapture = false;
+      if (shouldResume && isInitialized.value) {
+        _controller?.play();
+      }
+    };
+
     _setupOrientations();
+    captureGuard.enable();
   }
 
   @override
   void onClose() {
     _closed = true;
+    _resumeAfterCapture = false;
+    captureGuard.disable();
     _disposePlayer();
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -206,6 +227,10 @@ class CustomVideoPlayerController extends GetxController {
   void togglePlayPause() {
     final player = _controller;
     if (player == null || !isInitialized.value) return;
+    if (isScreenCaptured.value) {
+      player.pause();
+      return;
+    }
     if (isPlaying.value) {
       player.pause();
     } else {

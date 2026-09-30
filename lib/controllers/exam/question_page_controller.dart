@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/models/models.dart';
@@ -295,16 +298,58 @@ class QuestionPageController extends GetxController {
         modeType == 'exam mode' ||
         modeType == 'both';
 
-    // For exam_mode and both, require successful submission before navigation
+    // Exam mode submits when online. Offline attempts still show local results.
     if (isExamModeType && examId != 0) {
       await _submitWithRetry();
     } else {
-      // For other modes, proceed without submission requirement
       _navigateToResults();
     }
   }
 
+  Future<bool> _hasNetwork() async {
+    try {
+      final result = await InternetAddress.lookup(
+        'example.com',
+      ).timeout(const Duration(seconds: 3));
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool _isConnectionError(Object error) {
+    if (error is DioException) {
+      switch (error.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+        case DioExceptionType.connectionError:
+          return true;
+        case DioExceptionType.unknown:
+          return error.error is SocketException;
+        default:
+          return false;
+      }
+    }
+    return error is SocketException;
+  }
+
+  void _showLocalResultsAfterConnectionFailure() {
+    logger.w('Exam submit unavailable offline; showing local results');
+    isSubmitting.value = false;
+    update();
+    _navigateToResults();
+  }
+
   Future<void> _submitWithRetry() async {
+    isSubmitting.value = true;
+    update();
+
+    if (!await _hasNetwork()) {
+      _showLocalResultsAfterConnectionFailure();
+      return;
+    }
+
     bool submissionSuccessful = false;
 
     while (!submissionSuccessful) {
@@ -356,14 +401,17 @@ class QuestionPageController extends GetxController {
         }
       } catch (e) {
         logger.e('Error during final submission: $e');
+        if (_isConnectionError(e)) {
+          _showLocalResultsAfterConnectionFailure();
+          return;
+        }
+
         isSubmitting.value = false;
         update();
 
-        // Show retry dialog
+        // Keep retry for auth, validation, and server errors.
         final shouldRetry = await _showRetryDialog(e.toString());
         if (!shouldRetry) {
-          // User chose not to retry, but we still need to block navigation
-          // Keep the dialog open or show error
           return;
         }
         // Continue loop to retry

@@ -4,6 +4,7 @@ import 'package:flutter_tex/flutter_tex.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/components/components.dart';
+import 'package:vector_academy/components/ui/content_protection_layer.dart';
 import 'package:vector_academy/controllers/exam/question_page_controller.dart';
 import 'package:vector_academy/utils/navigation_utils.dart';
 import 'package:vector_academy/utils/utils.dart';
@@ -50,73 +51,80 @@ class QuestionPage extends StatelessWidget {
       examModeType: examModeType,
     );
 
-    return GetBuilder<QuestionPageController>(
-      builder: (controller) {
-        // Handle empty questions state
-        if (controller.questions.isEmpty) {
-          return _buildEmptyQuestionsState(context, controller);
-        }
+    return ContentProtectionScope(
+      onBack: Get.back,
+      child: GetBuilder<QuestionPageController>(
+        builder: (controller) {
+          // Handle empty questions state
+          if (controller.questions.isEmpty) {
+            return _buildEmptyQuestionsState(context, controller);
+          }
 
-        if (controller.isCompleted.value && !controller.showAnswers.value) {
-          return _buildResultsPage(context, controller);
-        }
+          if (controller.isCompleted.value && !controller.showAnswers.value) {
+            return _buildResultsPage(context, controller);
+          }
 
-        if (controller.showingNoteInterstitial.value &&
-            controller.noteInterstitialQuestion != null) {
-          return _buildNoteInterstitialScaffold(context, controller);
-        }
+          if (controller.showingNoteInterstitial.value &&
+              controller.noteInterstitialQuestion != null) {
+            return _buildNoteInterstitialScaffold(context, controller);
+          }
 
-        return Scaffold(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          appBar: _buildAppBar(context, controller),
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Timer if enabled
-                  if (showTimer) _buildTimer(context, controller),
+          return Scaffold(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            appBar: _buildAppBar(context, controller),
+            body: SafeArea(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Timer if enabled
+                    if (showTimer) _buildTimer(context, controller),
 
-                  SizedBox(height: 16),
+                    SizedBox(height: 16),
 
-                  // Question content
-                  _buildQuestionCard(
-                    context,
-                    controller.questions[controller.currentQuestionIndex.value],
-                    controller.currentQuestionIndex.value + 1,
-                  ),
+                    // Question content
+                    _buildQuestionCard(
+                      context,
+                      controller.questions[controller
+                          .currentQuestionIndex
+                          .value],
+                      controller.currentQuestionIndex.value + 1,
+                    ),
 
-                  SizedBox(height: 20),
+                    SizedBox(height: 20),
 
-                  // Choices
-                  _buildChoicesSection(
-                    context,
-                    controller
-                        .questions[controller.currentQuestionIndex.value]
-                        .choices,
-                    controller,
-                  ),
+                    // Choices
+                    _buildChoicesSection(
+                      context,
+                      controller
+                          .questions[controller.currentQuestionIndex.value]
+                          .choices,
+                      controller,
+                    ),
 
-                  SizedBox(height: 16),
+                    SizedBox(height: 16),
 
-                  // Solution Section
-                  _buildSolutionSection(
-                    context,
-                    controller.questions[controller.currentQuestionIndex.value],
-                    controller,
-                  ),
+                    // Solution Section
+                    _buildSolutionSection(
+                      context,
+                      controller.questions[controller
+                          .currentQuestionIndex
+                          .value],
+                      controller,
+                    ),
 
-                  SizedBox(height: 24),
+                    SizedBox(height: 24),
 
-                  // Navigation
-                  _buildNavigationSection(context, controller),
-                ],
+                    // Navigation
+                    _buildNavigationSection(context, controller),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 

@@ -92,3 +92,34 @@ class HiveLeaderboardCacheStorage {
         .toList();
   }
 }
+
+class HiveReadingPlanStorage {
+  static const String _boxName = 'readingPlanCacheStorage';
+  static const String _documentsKey = 'reading_plan_documents';
+  static late Box<dynamic> _box;
+
+  Future<void> init() async {
+    if (!Hive.isBoxOpen(_boxName)) {
+      _box = await Hive.openBox<dynamic>(_boxName);
+    } else {
+      _box = Hive.box<dynamic>(_boxName);
+    }
+  }
+
+  Future<void> setDocuments(List<ReadingPlanDocument> documents) async {
+    final jsonList = documents.map((item) => item.toJson()).toList();
+    await _box.put(_documentsKey, jsonList);
+  }
+
+  Future<List<ReadingPlanDocument>> getDocuments() async {
+    final value =
+        _box.get(_documentsKey, defaultValue: <dynamic>[]) as List<dynamic>;
+    return value
+        .whereType<Map>()
+        .map(
+          (item) =>
+              ReadingPlanDocument.fromJson(Map<String, dynamic>.from(item)),
+        )
+        .toList();
+  }
+}

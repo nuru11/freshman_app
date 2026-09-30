@@ -5,12 +5,13 @@ import 'package:vector_academy/services/api/exceptions.dart';
 import 'package:vector_academy/services/api/reading_plan.dart';
 import 'package:vector_academy/services/auth.dart';
 import 'package:vector_academy/services/premium_service.dart';
-import 'package:vector_academy/utils/snackbar_utils.dart';
+import 'package:vector_academy/utils/storages/storages.dart';
 import 'package:vector_academy/utils/utils.dart';
 import 'package:vector_academy/views/views.dart';
 
 class ReadingPlanController extends GetxController {
   final ReadingPlanService _service = Get.find<ReadingPlanService>();
+  final HiveReadingPlanStorage _storage = HiveReadingPlanStorage();
 
   bool isLoading = false;
   List<ReadingPlanDocument> documents = [];
@@ -50,13 +51,23 @@ class ReadingPlanController extends GetxController {
       return;
     }
 
-    isLoading = true;
-    update();
+    final cached = await _storage.getDocuments();
+    if (cached.isNotEmpty) {
+      documents = cached;
+      update();
+    }
+
+    if (documents.isEmpty) {
+      isLoading = true;
+      update();
+    }
+
     try {
       documents = await _service.listDocuments();
+      await _storage.setDocuments(documents);
     } catch (e) {
       logger.e('Failed to load reading plans: $e');
-      if (showError) {
+      if (documents.isEmpty && showError) {
         AppSnackbar.showError(
           'Error',
           e is ApiException ? e.message : 'Failed to load reading plans',
@@ -113,18 +124,23 @@ class ReadingPlanController extends GetxController {
   }
 
   Future<void> markRead(ReadingPlanDocument doc) async {
+    final index = documents.indexWhere((d) => d.id == doc.id);
+    if (index == -1) return;
+
+    documents[index] = doc.copyWith(isRead: true);
+    await _storage.setDocuments(documents);
+    update();
+
     try {
       final updated = await _service.markRead(doc.id);
-      final index = documents.indexWhere((d) => d.id == doc.id);
-      if (index != -1) {
-        documents[index] = updated;
+      final updatedIndex = documents.indexWhere((d) => d.id == doc.id);
+      if (updatedIndex != -1) {
+        documents[updatedIndex] = updated;
+        await _storage.setDocuments(documents);
         update();
       }
     } catch (e) {
-      AppSnackbar.showError(
-        'Error',
-        e is ApiException ? e.message : 'Failed to mark as read',
-      );
+      logger.e('Failed to sync reading plan read state: $e');
     }
   }
 }

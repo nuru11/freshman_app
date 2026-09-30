@@ -84,7 +84,7 @@ class ReadingPlanTab extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              if (controller.isLoading)
+              if (controller.isLoading && controller.documents.isEmpty)
                 const Center(child: CircularProgressIndicator())
               else if (controller.documents.isEmpty)
                 Padding(
