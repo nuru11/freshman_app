@@ -163,11 +163,7 @@ class ExamController extends GetxController {
       exam.isDownloaded = exam.questions.isNotEmpty;
     }
 
-    return exams.where((exam) {
-      if (!_isExamScreenExam(exam)) return false;
-      if (_isOffline && !hasDownloadedExamContent(exam)) return false;
-      return true;
-    }).toList();
+    return exams.where(_isExamScreenExam).toList();
   }
 
   Future<void> loadExams() async {

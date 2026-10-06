@@ -12,6 +12,17 @@ import 'package:vector_academy/components/components.dart';
 import 'package:vector_academy/utils/utils.dart';
 import 'package:vector_academy/views/exam/exam_result_page.dart';
 import 'package:vector_academy/views/exam/question_page.dart';
+import 'package:vector_academy/views/views.dart';
+
+void openExamPurchase(Exam exam) {
+  final checkoutArgs = <String, dynamic>{
+    'examId': exam.id,
+    'examName': exam.title,
+    if (exam.examCategory != null) 'examCategoryId': exam.examCategory!.id,
+  };
+  if (!requireAuthForPurchase(checkoutArgs: checkoutArgs)) return;
+  Get.toNamed(VIEWS.payments.path, arguments: checkoutArgs);
+}
 
 class ExamDetailPage extends StatefulWidget {
   final Exam exam;
@@ -493,9 +504,10 @@ class _ExamDetailPageState extends State<ExamDetailPage> {
             ),
             SizedBox(height: 16),
             if (_isExamEffectivelyLocked)
-              _DisabledBanner(
-                message:
-                    'This exam is currently locked. Please unlock it to continue.',
+              ElevatedButton.icon(
+                onPressed: () => openExamPurchase(_exam),
+                icon: const Icon(Icons.lock_open),
+                label: const Text('Unlock exam'),
               )
             else if (!_isDownloaded)
               ElevatedButton.icon(
@@ -739,39 +751,6 @@ class _ModeCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _DisabledBanner extends StatelessWidget {
-  final String message;
-
-  const _DisabledBanner({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.info, color: Colors.orange),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.orange[900],
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

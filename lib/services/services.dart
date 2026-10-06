@@ -16,6 +16,7 @@ export "api/faq.dart";
 export 'api/notification.dart';
 export 'api/leaderboard.dart';
 export 'api/app_branding.dart';
+export 'api/app_version.dart';
 export 'api/study_planner.dart';
 export 'api/success_stories.dart';
 export 'api/user_results.dart';

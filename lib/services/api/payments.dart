@@ -5,6 +5,94 @@ import '../../utils/utils.dart';
 import '../../models/models.dart';
 import 'dart:io';
 
+class GiftRecipientDevice {
+  final int id;
+  final String name;
+  final String brand;
+  final String model;
+  final String manufacturer;
+  final String os;
+
+  const GiftRecipientDevice({
+    required this.id,
+    required this.name,
+    required this.brand,
+    required this.model,
+    required this.manufacturer,
+    required this.os,
+  });
+
+  factory GiftRecipientDevice.fromJson(Map<String, dynamic> json) {
+    return GiftRecipientDevice(
+      id: (json['id'] as num).toInt(),
+      name: (json['name'] ?? '').toString(),
+      brand: (json['brand'] ?? '').toString(),
+      model: (json['model'] ?? '').toString(),
+      manufacturer: (json['manufacturer'] ?? '').toString(),
+      os: (json['os'] ?? '').toString(),
+    );
+  }
+
+  String get label {
+    final parts = [brand, model]
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty && part.toLowerCase() != 'unknown')
+        .toList();
+    if (parts.isNotEmpty) return parts.join(' ');
+    final trimmedName = name.trim();
+    if (trimmedName.isNotEmpty && trimmedName.toLowerCase() != 'unknown') {
+      return trimmedName;
+    }
+    return 'Device $id';
+  }
+
+  String get osLabel {
+    final trimmed = os.trim();
+    if (trimmed.isEmpty || trimmed.toLowerCase() == 'unknown') return '';
+    return trimmed;
+  }
+}
+
+class GiftRecipientLookup {
+  final List<GiftRecipientDevice> devices;
+  final int? gradeId;
+  final String? gradeName;
+
+  const GiftRecipientLookup({
+    required this.devices,
+    this.gradeId,
+    this.gradeName,
+  });
+
+  factory GiftRecipientLookup.fromJson(Map<String, dynamic> json) {
+    final rawDevices = json['devices'];
+    final devices = rawDevices is List
+        ? rawDevices
+              .whereType<Map>()
+              .map(
+                (item) => GiftRecipientDevice.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .toList()
+        : <GiftRecipientDevice>[];
+    final rawGrade = json['grade'];
+    int? gradeId;
+    String? gradeName;
+    if (rawGrade is Map) {
+      final id = rawGrade['id'];
+      if (id is num) gradeId = id.toInt();
+      final name = (rawGrade['name'] ?? '').toString().trim();
+      if (name.isNotEmpty) gradeName = name;
+    }
+    return GiftRecipientLookup(
+      devices: devices,
+      gradeId: gradeId,
+      gradeName: gradeName,
+    );
+  }
+}
+
 class PaymentService extends GetxController {
   final ApiClient apiClient = ApiClient();
 
@@ -125,14 +213,17 @@ class PaymentService extends GetxController {
     }
   }
 
-  Future<void> lookupGiftRecipient(String phone) async {
+  Future<GiftRecipientLookup> lookupGiftRecipient(String phone) async {
     try {
       final response = await apiClient.get(
         '/app/gift-recipients/lookup/',
         authenticated: true,
         queryParameters: {'phone': phone},
       );
-      if (response.statusCode == 200) return;
+      if (response.statusCode == 200) {
+        final data = Map<String, dynamic>.from(response.data as Map);
+        return GiftRecipientLookup.fromJson(data);
+      }
       throw ApiException(
         ApiErrorMessage.fromData(response.data) ??
             'No active account is registered with that phone number.',
@@ -157,6 +248,7 @@ class PaymentService extends GetxController {
     required double amount,
     String? referralCode,
     String? recipientPhone,
+    int? recipientDevice,
   }) async {
     final deviceId = device.trim();
     if (deviceId.isEmpty) {
@@ -176,6 +268,9 @@ class PaymentService extends GetxController {
     }
     if (recipientPhone != null && recipientPhone.trim().isNotEmpty) {
       additionalData['recipient_phone'] = recipientPhone.trim();
+    }
+    if (recipientDevice != null) {
+      additionalData['recipient_device'] = recipientDevice;
     }
     
     final response = await apiClient.postMultipart(

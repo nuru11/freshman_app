@@ -47,6 +47,11 @@ class _OptimalComputerProductsPageState
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  Future<void> _openTelegram() async {
+    final uri = Uri.parse('https://t.me/Optimal_computer');
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,10 +75,39 @@ class _OptimalComputerProductsPageState
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: FilledButton.icon(
-            onPressed: _downloadApp,
-            icon: const Icon(Icons.download_rounded),
-            label: const Text('Download app'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'እንደዚህ አይነት መሠል ላፕቶፓችን እና ታብሌቶችን በቅናሽ እና በተመጣጣኝ ዋጋ ፤ ሂሳብ ቀድመው ሳይከፍሉ ካሉበት እናደርሳለን ። አይተው ካልወደዱት ይመልሱታል ። አሁኑኑ ተቀላቀሉ !!!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.4,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _downloadApp,
+                      icon: const Icon(Icons.download_rounded),
+                      label: const Text('Download app'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _openTelegram,
+                      icon: const Icon(Icons.telegram),
+                      label: const Text('Telegram'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

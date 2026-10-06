@@ -11,6 +11,8 @@ class Package {
   @JsonKey(name: 'duration_days')
   final int durationDays;
   final List<int> exams;
+  @JsonKey(name: 'exam_categories')
+  final List<int> examCategories;
   final List<int> subjects;
   final int? grade;
   @JsonKey(name: 'includes_planner')
@@ -25,6 +27,7 @@ class Package {
     required this.price,
     required this.durationDays,
     required this.exams,
+    this.examCategories = const <int>[],
     required this.subjects,
     required this.grade,
     this.includesPlanner = false,

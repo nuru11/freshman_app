@@ -12,6 +12,7 @@ import 'package:vector_academy/components/components.dart';
 import 'package:vector_academy/utils/utils.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/flavors/flavor_config.dart';
+import 'package:vector_academy/utils/app_update_prompt.dart';
 
 void main() async {
   // Remove debug banner
@@ -44,10 +45,12 @@ class MyApp extends StatelessWidget {
       theme: lightTheme(context),
       debugShowCheckedModeBanner: false,
       builder: (context, child) {
-        return Overlay(
-          initialEntries: [
-            OverlayEntry(builder: (_) => child ?? const SizedBox.shrink()),
-          ],
+        return AppUpdateGate(
+          child: Overlay(
+            initialEntries: [
+              OverlayEntry(builder: (_) => child ?? const SizedBox.shrink()),
+            ],
+          ),
         );
       },
       getPages: [

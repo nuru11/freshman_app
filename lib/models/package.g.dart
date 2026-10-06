@@ -15,6 +15,10 @@ Package _$PackageFromJson(Map<String, dynamic> json) => Package(
   exams: (json['exams'] as List<dynamic>)
       .map((e) => (e as num).toInt())
       .toList(),
+  examCategories: (json['exam_categories'] as List<dynamic>?)
+          ?.map((e) => (e as num).toInt())
+          .toList() ??
+      const <int>[],
   subjects: (json['subjects'] as List<dynamic>)
       .map((e) => (e as num).toInt())
       .toList(),
@@ -30,6 +34,7 @@ Map<String, dynamic> _$PackageToJson(Package instance) => <String, dynamic>{
   'price': instance.price,
   'duration_days': instance.durationDays,
   'exams': instance.exams,
+  'exam_categories': instance.examCategories,
   'subjects': instance.subjects,
   'grade': instance.grade,
   'includes_planner': instance.includesPlanner,

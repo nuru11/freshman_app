@@ -16,7 +16,7 @@ class ChapterDetailController extends GetxController {
   bool _isVideosLoading = false;
   bool get isVideosLoading => _isVideosLoading;
 
-  bool _isNotesLoading = false;
+  bool _isNotesLoading = true;
   bool get isNotesLoading => _isNotesLoading;
   bool _isQuizzesLoading = true;
   bool get isQuizzesLoading => _isQuizzesLoading;
@@ -308,10 +308,10 @@ class ChapterDetailController extends GetxController {
   }
 
   Future<void> loadVideos() async {
-    final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
     _isVideosLoading = true;
     update();
     try {
+      final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
       final videos_ = await _videoApiService.getVideos(
         chapterId,
         deviceId: device.id,
@@ -340,10 +340,10 @@ class ChapterDetailController extends GetxController {
   }
 
   Future<void> loadNotes() async {
-    final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
     _isNotesLoading = true;
     update();
     try {
+      final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
       final notes_ = await _noteApiService.getNotes(
         device.id,
         chapterId: chapterId,
@@ -371,10 +371,10 @@ class ChapterDetailController extends GetxController {
   }
 
   Future<void> loadQuizzes() async {
-    final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
     _isQuizzesLoading = true;
     update();
     try {
+      final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
       final quizzes_ = await _examService.getAvailableExams(
         device.id,
         chapterId: chapterId,

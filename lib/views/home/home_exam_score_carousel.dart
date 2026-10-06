@@ -24,13 +24,7 @@ class _HomeExamScoreCarouselState extends State<HomeExamScoreCarousel> {
   }
 
   List<CompetetionExam> _visibleExams(UserScoreController controller) {
-    final result = controller.userResult;
-    if (result != null && result.hasUserAttempted) {
-      return result.exams.isNotEmpty
-          ? result.exams
-          : controller.examFallbackScores;
-    }
-    return controller.examFallbackScores;
+    return controller.visibleHomeExams;
   }
 
   void _openMyScores() {

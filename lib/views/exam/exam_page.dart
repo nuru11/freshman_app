@@ -7,6 +7,7 @@ import 'package:vector_academy/controllers/misc/downloads_controller.dart';
 import 'package:vector_academy/models/exam.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/utils/utils.dart';
+import 'package:vector_academy/views/exam/exam_detail_page.dart';
 import 'package:vector_academy/views/exam/exam_my_results_section.dart';
 import 'package:vector_academy/views/exam/exam_standings_section.dart';
 
@@ -108,6 +109,7 @@ class _ExamsSection extends StatelessWidget {
     return buildExamBrowseGrid(
       context: context,
       controller: controller,
+      isCategoryBrowse: true,
       groups: controller.categoryGroups,
       onTap: (group) {
         Get.to(
@@ -510,12 +512,11 @@ Widget _buildExamCard(
 
 Widget buildExamActionButton(Exam exam, ExamController controller) {
   if (controller.isExamLocked(exam)) {
-    // Locked exam
     return ElevatedButton(
-      onPressed: null,
+      onPressed: () => openExamPurchase(exam),
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.grey[200],
-        foregroundColor: Colors.grey[500],
+        backgroundColor: Colors.orange[700],
+        foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         padding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         minimumSize: Size(0, 0),
@@ -524,11 +525,11 @@ Widget buildExamActionButton(Exam exam, ExamController controller) {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.lock, size: 10, color: Colors.grey[500]),
+          Icon(Icons.lock_open, size: 10, color: Colors.white),
           SizedBox(width: 3),
           Flexible(
             child: Text(
-              "Locked",
+              "Unlock",
               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
               overflow: TextOverflow.ellipsis,
             ),
@@ -665,11 +666,39 @@ class ExamSearchDelegate extends SearchDelegate<Exam?> {
   }
 }
 
+class _OfflineCategoryEmpty extends StatelessWidget {
+  const _OfflineCategoryEmpty();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'No saved exam categories',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Open Exams once while online to save categories for offline use.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Color(0xFF64748B)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 Widget buildExamBrowseGrid({
   required BuildContext context,
   required ExamController controller,
   required List<ExamBrowseGroup> groups,
   required void Function(ExamBrowseGroup group) onTap,
+  bool isCategoryBrowse = false,
 }) {
   if (controller.isLoading) {
     return const Center(child: CircularProgressIndicator());
@@ -702,15 +731,15 @@ Widget buildExamBrowseGrid({
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.45,
             child: Center(
-              child: Text(
-                controller.isOffline
-                    ? 'No downloaded exams'
-                    : 'No exams available',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: controller.isOffline && isCategoryBrowse
+                  ? const _OfflineCategoryEmpty()
+                  : const Text(
+                      'No exams available',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
         ],

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:vector_academy/controllers/misc/user_score_controller.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/views/exam/exam_result_page.dart';
 import 'package:vector_academy/utils/storages/storages.dart';
@@ -422,7 +423,7 @@ class QuestionPageController extends GetxController {
     if (submissionSuccessful) {
       isSubmitting.value = false;
       update();
-      _navigateToResults();
+      _navigateToResults(publishScore: mode == QuestionMode.exam);
     }
   }
 
@@ -450,19 +451,33 @@ class QuestionPageController extends GetxController {
     return result ?? false;
   }
 
-  void _navigateToResults() {
+  void _navigateToResults({bool publishScore = false}) {
     isCompleted.value = true;
     _examStorage.clearProgress(
       examId,
       mode == QuestionMode.practice ? 'practice' : 'exam',
     );
     _examStorage.markCompleted(examId);
+    if (publishScore) {
+      _publishHomeExamScore();
+    }
     Get.to(
       () => ExamResultPage(
         score: calculateCorrectAnswers(),
         totalQuestions: questions.length,
         correctAnswers: calculateCorrectAnswers(),
       ),
+    );
+  }
+
+  void _publishHomeExamScore() {
+    final controller = Get.isRegistered<UserScoreController>()
+        ? Get.find<UserScoreController>()
+        : Get.put(UserScoreController());
+    controller.publishFinishedExamScore(
+      examName: title,
+      correctAnswers: calculateCorrectAnswers(),
+      totalQuestions: questions.length,
     );
   }
 

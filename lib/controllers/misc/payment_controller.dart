@@ -33,6 +33,13 @@ class PaymentController extends GetxController {
   String recipientPhone = '';
   RecipientLookupStatus recipientLookupStatus = RecipientLookupStatus.idle;
   String? recipientLookupMessage;
+  List<GiftRecipientDevice> recipientDevices = [];
+  int? selectedRecipientDeviceId;
+  int? recipientGradeId;
+  String? recipientGradeName;
+  bool isLoadingGiftPackages = false;
+  bool _showingRecipientPackages = false;
+  int _packageLoadGeneration = 0;
   Timer? _recipientDebounceTimer;
 
   int? checkoutPackageId;
@@ -107,7 +114,67 @@ class PaymentController extends GetxController {
     recipientPhone = '';
     recipientLookupStatus = RecipientLookupStatus.idle;
     recipientLookupMessage = null;
+    recipientDevices = [];
+    selectedRecipientDeviceId = null;
+    recipientGradeId = null;
+    recipientGradeName = null;
+    _showingRecipientPackages = false;
+    isLoadingGiftPackages = false;
     recipientPhoneController.clear();
+  }
+
+  void _clearRecipientDevices() {
+    recipientDevices = [];
+    selectedRecipientDeviceId = null;
+  }
+
+  bool get showingRecipientGradePackages =>
+      !purchaseForSelf && recipientGradeId != null;
+
+  void _clearRecipientGrade() {
+    recipientGradeId = null;
+    recipientGradeName = null;
+  }
+
+  Future<void> _restoreBuyerPackagesIfNeeded() async {
+    _clearRecipientGrade();
+    if (!_showingRecipientPackages) {
+      isLoadingGiftPackages = false;
+      return;
+    }
+    _showingRecipientPackages = false;
+    await loadPackages(buyerGrade: true, fullScreen: false);
+  }
+
+  void _withholdRecipientPackages() {
+    _clearRecipientGrade();
+    _showingRecipientPackages = true;
+    packages = [];
+    _clearReferralPricing();
+    isLoadingGiftPackages = false;
+  }
+
+  GiftRecipientDevice? get selectedRecipientDevice {
+    for (final device in recipientDevices) {
+      if (device.id == selectedRecipientDeviceId) return device;
+    }
+    return null;
+  }
+
+  String get selectedRecipientDeviceLabel =>
+      selectedRecipientDevice?.label ?? '';
+
+  String get checkoutRecipientLabel {
+    if (purchaseForSelf) return 'Course for: Myself';
+    if (selectedRecipientDeviceLabel.isEmpty) {
+      return 'Gift for: $recipientPhone';
+    }
+    return 'Gift for: $recipientPhone · $selectedRecipientDeviceLabel';
+  }
+
+  void selectRecipientDevice(int deviceId) {
+    selectedRecipientDeviceId = deviceId;
+    update();
   }
 
   void _showGiftError(String message) {
@@ -116,14 +183,25 @@ class PaymentController extends GetxController {
 
   bool _ensureGiftRecipient() {
     if (purchaseForSelf) return true;
-    if (recipientLookupStatus == RecipientLookupStatus.found &&
-        _recipientPhonePattern.hasMatch(recipientPhone)) {
-      return true;
+    if (recipientLookupStatus != RecipientLookupStatus.found ||
+        !_recipientPhonePattern.hasMatch(recipientPhone)) {
+      _showGiftError(
+        recipientLookupMessage ??
+            'Enter the phone number of an active account.',
+      );
+      return false;
     }
-    _showGiftError(
-      recipientLookupMessage ?? 'Enter the phone number of an active account.',
-    );
-    return false;
+    if (recipientDevices.isEmpty) {
+      _showGiftError(
+        'This account has no registered device. The recipient must open the app on a device first.',
+      );
+      return false;
+    }
+    if (selectedRecipientDevice == null) {
+      _showGiftError('Choose one device to unlock.');
+      return false;
+    }
+    return true;
   }
 
   void setPurchaseForSelf(bool forSelf) {
@@ -132,6 +210,8 @@ class PaymentController extends GetxController {
       _recipientDebounceTimer?.cancel();
       recipientLookupStatus = RecipientLookupStatus.idle;
       recipientLookupMessage = null;
+      _clearRecipientDevices();
+      _restoreBuyerPackagesIfNeeded();
       update();
       return;
     }
@@ -152,11 +232,17 @@ class PaymentController extends GetxController {
       recipientLookupMessage = recipientPhone.isEmpty
           ? null
           : 'Enter a valid phone number.';
+      _clearRecipientDevices();
+      _restoreBuyerPackagesIfNeeded();
       update();
       return;
     }
     recipientLookupStatus = RecipientLookupStatus.loading;
     recipientLookupMessage = null;
+    _clearRecipientDevices();
+    _clearRecipientGrade();
+    _packageLoadGeneration++;
+    isLoadingGiftPackages = true;
     update();
     final phone = recipientPhone;
     _recipientDebounceTimer = Timer(const Duration(milliseconds: 400), () {
@@ -166,10 +252,38 @@ class PaymentController extends GetxController {
 
   Future<void> _lookupRecipient(String phone) async {
     try {
-      await _paymentService.lookupGiftRecipient(phone);
+      final lookup = await _paymentService.lookupGiftRecipient(phone);
       if (purchaseForSelf || recipientPhone != phone) return;
-      recipientLookupStatus = RecipientLookupStatus.found;
-      recipientLookupMessage = 'Active account found';
+      recipientDevices = lookup.devices;
+      if (lookup.devices.isEmpty) {
+        selectedRecipientDeviceId = null;
+        recipientLookupStatus = RecipientLookupStatus.error;
+        recipientLookupMessage =
+            'This account has no registered device. The recipient must open the app on a device first.';
+        await _restoreBuyerPackagesIfNeeded();
+      } else if (lookup.gradeId == null) {
+        selectedRecipientDeviceId = lookup.devices.length == 1
+            ? lookup.devices.first.id
+            : null;
+        recipientLookupStatus = RecipientLookupStatus.error;
+        recipientLookupMessage =
+            'This account has no grade. The student must choose a grade in the app first.';
+        _withholdRecipientPackages();
+      } else {
+        selectedRecipientDeviceId = lookup.devices.length == 1
+            ? lookup.devices.first.id
+            : null;
+        recipientGradeId = lookup.gradeId;
+        recipientGradeName = lookup.gradeName;
+        _showingRecipientPackages = true;
+        recipientLookupStatus = RecipientLookupStatus.found;
+        recipientLookupMessage = lookup.gradeName == null
+            ? 'Active account found'
+            : 'Active account found · ${lookup.gradeName}';
+        update();
+        await loadPackages(gradeId: lookup.gradeId, fullScreen: false);
+        return;
+      }
     } catch (e) {
       if (purchaseForSelf || recipientPhone != phone) return;
       recipientLookupStatus = RecipientLookupStatus.error;
@@ -177,6 +291,7 @@ class PaymentController extends GetxController {
         e,
         fallback: 'No active account is registered with that phone number.',
       );
+      await _restoreBuyerPackagesIfNeeded();
     }
     update();
   }
@@ -251,6 +366,7 @@ class PaymentController extends GetxController {
     required String? referralCode,
     required DeviceInfo device,
     String? recipientPhone,
+    int? recipientDevice,
   }) async {
     try {
       await _paymentService.uploadReceipt(
@@ -261,6 +377,7 @@ class PaymentController extends GetxController {
         device: device.id,
         referralCode: referralCode,
         recipientPhone: recipientPhone,
+        recipientDevice: recipientDevice,
       );
     } catch (e) {
       if (!DeviceService.isOwnedByAnotherUser(e)) rethrow;
@@ -284,6 +401,7 @@ class PaymentController extends GetxController {
         device: retryDevice.id,
         referralCode: referralCode,
         recipientPhone: recipientPhone,
+        recipientDevice: recipientDevice,
       );
     }
   }
@@ -343,16 +461,37 @@ class PaymentController extends GetxController {
     }
   }
 
-  Future<void> loadPackages() async {
+  Future<void> loadPackages({
+    int? gradeId,
+    bool buyerGrade = false,
+    bool fullScreen = true,
+  }) async {
+    final generation = ++_packageLoadGeneration;
+    if (!buyerGrade &&
+        gradeId == null &&
+        !purchaseForSelf &&
+        recipientGradeId != null) {
+      gradeId = recipientGradeId;
+    }
     try {
-      isLoading = true;
+      if (fullScreen) {
+        isLoading = true;
+      } else {
+        isLoadingGiftPackages = true;
+      }
       update();
       final device = await _ensureDeviceRegistered();
-      final grade = _user?.grade;
+      final int? resolvedGradeId = buyerGrade || gradeId == null
+          ? _user?.grade.id
+          : gradeId;
       final packages_ = await _paymentService.getPackages(
         device.id,
-        grade: grade?.id,
+        grade: resolvedGradeId,
       );
+      if (generation != _packageLoadGeneration) return;
+      if (!buyerGrade && gradeId != null && recipientGradeId != gradeId) {
+        return;
+      }
       packages = packages_;
       update();
 
@@ -363,13 +502,23 @@ class PaymentController extends GetxController {
         await _validateReferralForAllPackages();
       }
     } catch (e) {
+      if (generation != _packageLoadGeneration) return;
+      if (!fullScreen && !buyerGrade && gradeId != null) {
+        packages = [];
+      }
       AppSnackbar.showError(
         'Error',
         ApiErrorMessage.from(e, fallback: 'Failed to load packages'),
       );
     } finally {
-      isLoading = false;
-      loadPaymentMethods();
+      if (generation != _packageLoadGeneration) return;
+      if (fullScreen) {
+        isLoading = false;
+        loadPaymentMethods();
+      } else {
+        isLoadingGiftPackages = false;
+        update();
+      }
     }
   }
 
@@ -427,6 +576,7 @@ class PaymentController extends GetxController {
         paymentAmount: paymentAmount,
         referralCode: referralCode,
         recipientPhone: purchaseForSelf ? null : recipientPhone,
+        recipientDevice: purchaseForSelf ? null : selectedRecipientDeviceId,
         device: device,
       );
 
