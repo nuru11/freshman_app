@@ -31,7 +31,6 @@ class CustomVideoPlayerController extends GetxController {
   final ScreenCaptureGuard captureGuard = ScreenCaptureGuard();
 
   RxBool get isScreenCaptured => captureGuard.isScreenCaptured;
-  String get watermarkLabel => captureGuard.watermarkLabel;
 
   static const List<double> speedOptions = [
     0.5,

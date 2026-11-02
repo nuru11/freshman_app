@@ -68,7 +68,9 @@ class HomeDashboard extends StatelessWidget {
                           child: OptimalComputerProductsBar(),
                         ),
                         SliverToBoxAdapter(
-                          child: _buildYearChip(context, controller),
+                          child: controller.showGradeTabs
+                              ? _buildGradeTabs(context, controller)
+                              : _buildYearChip(context, controller),
                         ),
                         SliverToBoxAdapter(
                           child: _buildSectionTitle(
@@ -188,6 +190,75 @@ class HomeDashboard extends StatelessWidget {
         hint: 'Search courses, chapters, notes...',
         onChanged: controller.updateSearchQuery,
         onClear: controller.clearSearch,
+      ),
+    );
+  }
+
+  Widget _buildGradeTabs(
+    BuildContext context,
+    HomeDashboardController controller,
+  ) {
+    return SizedBox(
+      height: 50,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        itemCount: controller.grades.length,
+        itemBuilder: (context, index) {
+          final grade = controller.grades[index];
+          final isSelected = controller.selectedGradeIndex == index;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => controller.selectGrade(index),
+                borderRadius: BorderRadius.circular(20),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? primaryColor
+                        : surfaceColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected ? primaryColor : borderColor,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isSelected) ...[
+                          const Icon(
+                            Icons.check_circle,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Text(
+                          grade.name,
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: isSelected ? Colors.white : onSurfaceColor,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

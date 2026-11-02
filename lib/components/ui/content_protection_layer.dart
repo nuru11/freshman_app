@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/utils/screen_capture_guard.dart';
@@ -42,76 +40,8 @@ class RecordingBlockedOverlay extends StatelessWidget {
   }
 }
 
-class MovingWatermark extends StatefulWidget {
-  final String label;
-
-  const MovingWatermark({super.key, required this.label});
-
-  @override
-  State<MovingWatermark> createState() => _MovingWatermarkState();
-}
-
-class _MovingWatermarkState extends State<MovingWatermark> {
-  static const List<Alignment> _alignments = [
-    Alignment(-0.82, -0.68),
-    Alignment(0.82, -0.42),
-    Alignment(0.7, 0.68),
-    Alignment(-0.78, 0.36),
-    Alignment(0.0, -0.08),
-  ];
-
-  int _index = 0;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (!mounted) return;
-      setState(() {
-        _index = (_index + 1) % _alignments.length;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: AnimatedAlign(
-        alignment: _alignments[_index],
-        duration: const Duration(milliseconds: 900),
-        curve: Curves.easeInOut,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
-          child: Text(
-            widget.label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              shadows: const [
-                Shadow(
-                  color: Colors.black54,
-                  blurRadius: 4,
-                  offset: Offset(0, 1),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// Turns capture protection on for the lifetime of this widget and covers
-/// [child] with the watermark or the recording blackout.
+/// [child] with the recording blackout while the screen is being recorded.
 class ContentProtectionScope extends StatefulWidget {
   final Widget child;
   final VoidCallback onBack;
@@ -148,14 +78,7 @@ class _ContentProtectionScopeState extends State<ContentProtectionScope> {
         return RecordingBlockedOverlay(onBack: widget.onBack);
       }
 
-      final label = _guard.watermarkLabel;
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          widget.child,
-          if (label.isNotEmpty) MovingWatermark(label: label),
-        ],
-      );
+      return widget.child;
     });
   }
 }

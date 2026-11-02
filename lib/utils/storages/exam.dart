@@ -57,6 +57,32 @@ class HiveExamStorage extends BaseObjectStorage<List<Exam>> {
     return _box.put('exams', exams);
   }
 
+  String _examCategoriesKey(int? gradeId) =>
+      'exam_categories_${gradeId ?? 'all'}';
+
+  Future<void> setExamCategories(
+    int? gradeId,
+    List<ExamCategoryBrowse> categories,
+  ) {
+    return _box.put(
+      _examCategoriesKey(gradeId),
+      categories.map((category) => category.toJson()).toList(),
+    );
+  }
+
+  Future<List<ExamCategoryBrowse>> getExamCategories(int? gradeId) async {
+    final value = _box.get(_examCategoriesKey(gradeId));
+    if (value is! List) return [];
+    return value
+        .whereType<Map>()
+        .map(
+          (item) => ExamCategoryBrowse.fromJson(
+            Map<String, dynamic>.from(item),
+          ),
+        )
+        .toList();
+  }
+
   Future<void> setQuizzes(int chapterId, List<Exam> quizzes) {
     logger.i('Setting quizzes for chapter $chapterId');
     return _box.put('quizzes_$chapterId', quizzes);

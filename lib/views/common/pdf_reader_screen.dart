@@ -106,16 +106,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
         ),
       );
 
-      if (!widget.protectContent) return reader;
-
-      final label = _controller.watermarkLabel;
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          reader,
-          if (label.isNotEmpty) MovingWatermark(label: label),
-        ],
-      );
+      return reader;
     });
   }
 

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vector_academy/components/ui/freshman_page_scaffold.dart';
@@ -645,10 +646,13 @@ class ExamSearchDelegate extends SearchDelegate<Exam?> {
   @override
   Widget buildSuggestions(BuildContext context) {
     final controller = Get.find<ExamController>();
+    final exams = controller.exams
+        .where((exam) => exam.examCategory != null)
+        .toList();
     return ListView.builder(
-      itemCount: controller.exams.length,
+      itemCount: exams.length,
       itemBuilder: (context, index) =>
-          _buildExamCard(context, controller.exams[index], controller),
+          _buildExamCard(context, exams[index], controller),
     );
   }
 
@@ -698,7 +702,9 @@ Widget buildExamBrowseGrid({
   required ExamController controller,
   required List<ExamBrowseGroup> groups,
   required void Function(ExamBrowseGroup group) onTap,
+  bool compact = false,
   bool isCategoryBrowse = false,
+  String emptyLabel = 'No exams available',
 }) {
   if (controller.isLoading) {
     return const Center(child: CircularProgressIndicator());
@@ -731,11 +737,11 @@ Widget buildExamBrowseGrid({
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.45,
             child: Center(
-              child: controller.isOffline && isCategoryBrowse
+              child: controller.isOffline && isCategoryBrowse && !compact
                   ? const _OfflineCategoryEmpty()
-                  : const Text(
-                      'No exams available',
-                      style: TextStyle(
+                  : Text(
+                      emptyLabel,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -747,67 +753,254 @@ Widget buildExamBrowseGrid({
     );
   }
 
+  if (compact) {
+    return RefreshIndicator(
+      onRefresh: controller.refreshExams,
+      child: ListView.separated(
+        clipBehavior: Clip.hardEdge,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        itemCount: groups.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final group = groups[index];
+          return _ExamSectionRow(group: group, onTap: () => onTap(group));
+        },
+      ),
+    );
+  }
+
   return RefreshIndicator(
     onRefresh: controller.refreshExams,
     child: GridView.builder(
+      clipBehavior: Clip.hardEdge,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 1,
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.78,
       ),
       itemCount: groups.length,
       itemBuilder: (context, index) {
         final group = groups[index];
-        return Material(
-          color: surfaceColor,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => onTap(group),
-            child: Ink(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: primaryColor.withValues(alpha: 0.08),
-                border: Border.all(color: primaryColor, width: 1.2),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
+        return _ExamBrowseCard(group: group, onTap: () => onTap(group));
+      },
+    ),
+  );
+}
+
+class _ExamBrowseCard extends StatefulWidget {
+  const _ExamBrowseCard({required this.group, required this.onTap});
+
+  final ExamBrowseGroup group;
+  final VoidCallback onTap;
+
+  @override
+  State<_ExamBrowseCard> createState() => _ExamBrowseCardState();
+}
+
+class _ExamBrowseCardState extends State<_ExamBrowseCard> {
+  bool _imageFailed = false;
+
+  bool get _hasThumbnail {
+    final thumbnail = widget.group.thumbnail?.trim();
+    return thumbnail != null && thumbnail.isNotEmpty && !_imageFailed;
+  }
+
+  String get _countLabel {
+    final count = widget.group.count;
+    return count == 1 ? '1 exam' : '$count exams';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: widget.onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _media()),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      group.name,
-                      textAlign: TextAlign.center,
-                      maxLines: 3,
+                      widget.group.name,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: primaryColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: onSurfaceColor,
                         height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
-                      '${group.count}',
+                      _countLabel,
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         color: onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _media() {
+    if (!_hasThumbnail) {
+      return _iconArea();
+    }
+
+    return CachedNetworkImage(
+      imageUrl: widget.group.thumbnail!,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      placeholder: (context, url) => _iconArea(showSpinner: true),
+      errorWidget: (context, url, error) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !_imageFailed) {
+            setState(() => _imageFailed = true);
+          }
+        });
+        return _iconArea();
+      },
+    );
+  }
+
+  Widget _iconArea({bool showSpinner = false}) {
+    return ColoredBox(
+      color: primaryColor.withValues(alpha: 0.08),
+      child: Center(
+        child: showSpinner
+            ? SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: primaryColor,
+                ),
+              )
+            : Icon(Icons.quiz_outlined, size: 32, color: primaryColor),
+      ),
+    );
+  }
+}
+
+class _ExamSectionRow extends StatelessWidget {
+  const _ExamSectionRow({required this.group, required this.onTap});
+
+  final ExamBrowseGroup group;
+  final VoidCallback onTap;
+
+  String get _countLabel {
+    final count = group.count;
+    return count == 1 ? '1 exam' : '$count exams';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    group.isLocked ? Icons.lock_outline : Icons.quiz_outlined,
+                    size: 22,
+                    color: primaryColor,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        group.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: onSurfaceColor,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _countLabel,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.chevron_right_rounded, color: onSurfaceVariant),
+              ],
             ),
           ),
-        );
-      },
-    ),
-  );
+        ),
+      ),
+    );
+  }
 }
 
 class ExamSectionsPage extends StatelessWidget {
@@ -842,8 +1035,18 @@ class ExamSectionsPage extends StatelessWidget {
           child: buildExamBrowseGrid(
             context: context,
             controller: controller,
+            compact: true,
+            emptyLabel: 'No sections available',
             groups: controller.sectionsForCategory(categoryId: categoryId),
             onTap: (group) {
+              final id = categoryId;
+              if (group.isLocked && id != null) {
+                openCategoryPurchase(
+                  categoryId: id,
+                  categoryName: categoryName,
+                );
+                return;
+              }
               Get.to(
                 () => ExamSectionExamsPage(
                   categoryId: categoryId,

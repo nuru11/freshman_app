@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:vector_academy/controllers/controllers.dart';
 import 'package:vector_academy/models/models.dart';
 import 'package:vector_academy/components/components.dart';
+import 'package:vector_academy/services/api/file_download_util.dart';
 import 'package:vector_academy/services/services.dart';
 import 'package:vector_academy/utils/navigation_utils.dart';
 import 'package:vector_academy/utils/pricing.dart';
@@ -358,6 +359,9 @@ class PaymentPage extends StatelessWidget {
     final int? targetExamCategoryId = rawExamCategoryId is int
         ? rawExamCategoryId
         : int.tryParse(rawExamCategoryId?.toString() ?? '');
+    final String? targetCategoryName = args is Map
+        ? args['categoryName'] as String?
+        : null;
     final bool prioritizePlanner =
         args is Map && args['prioritizePlanner'] == true;
 
@@ -380,6 +384,7 @@ class PaymentPage extends StatelessWidget {
                   context,
                   targetSubjectName,
                   targetExamName: targetExamName,
+                  targetCategoryName: targetCategoryName,
                   prioritizePlanner: prioritizePlanner,
                 ),
                 Expanded(
@@ -391,6 +396,7 @@ class PaymentPage extends StatelessWidget {
                     targetExamId: targetExamId,
                     targetExamName: targetExamName,
                     targetExamCategoryId: targetExamCategoryId,
+                    targetCategoryName: targetCategoryName,
                     prioritizePlanner: prioritizePlanner,
                   ),
                 ),
@@ -406,19 +412,26 @@ class PaymentPage extends StatelessWidget {
     BuildContext context,
     String? targetSubjectName, {
     String? targetExamName,
+    String? targetCategoryName,
     bool prioritizePlanner = false,
   }) {
+    final hasCategory =
+        targetCategoryName != null && targetCategoryName.isNotEmpty;
     final hasExam = targetExamName != null && targetExamName.isNotEmpty;
     final title = prioritizePlanner
         ? 'Unlock Planner'
-        : hasExam
+        : hasCategory
+            ? 'Unlock $targetCategoryName'
+            : hasExam
             ? 'Unlock $targetExamName'
             : targetSubjectName == null || targetSubjectName.isEmpty
                 ? 'Choose Package'
                 : 'Unlock $targetSubjectName';
     final subtitle = prioritizePlanner
         ? 'Select a planner package to continue'
-        : hasExam
+        : hasCategory
+            ? 'Pay once to unlock this category'
+            : hasExam
             ? 'Pay once to unlock this exam'
             : targetSubjectName == null || targetSubjectName.isEmpty
                 ? 'Select and pay for your subscription'
@@ -512,6 +525,7 @@ class PaymentPage extends StatelessWidget {
     int? targetExamId,
     String? targetExamName,
     int? targetExamCategoryId,
+    String? targetCategoryName,
     bool prioritizePlanner = false,
   }) {
     if (controller.isLoading) {
@@ -519,6 +533,9 @@ class PaymentPage extends StatelessWidget {
     }
 
     final giftGrade = controller.showingRecipientGradePackages;
+    final hasCategory = targetExamCategoryId != null &&
+        targetExamId == null &&
+        !giftGrade;
     final hasExam = targetExamId != null && !giftGrade;
     final hasSubject = targetSubjectId != null && !giftGrade;
     List<Package> packagesToShow = controller.packages;
@@ -531,6 +548,14 @@ class PaymentPage extends StatelessWidget {
                 examId: targetExamId,
                 examCategoryId: targetExamCategoryId,
               ),
+            )
+            .toList();
+      } else if (targetExamCategoryId != null) {
+        packagesToShow = packagesToShow
+            .where(
+              (package) =>
+                  _isExamPackage(package) &&
+                  package.examCategories.contains(targetExamCategoryId),
             )
             .toList();
       } else if (targetSubjectId != null) {
@@ -552,6 +577,16 @@ class PaymentPage extends StatelessWidget {
           if (giftGrade) ...[
             Text(
               'Packages for ${controller.recipientGradeName ?? 'this grade'}',
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ] else if (hasCategory) ...[
+            Text(
+              'Packages for ${targetCategoryName ?? 'this category'}',
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
@@ -1149,6 +1184,34 @@ class PaymentPage extends StatelessWidget {
   }
 }
 
+Widget _paymentMethodLogo(PaymentMethod method) {
+  final raw = method.image?.trim() ?? '';
+  final fallback = Icon(
+    Icons.account_balance,
+    color: Colors.blue.shade600,
+    size: 28,
+  );
+
+  return Container(
+    width: 52,
+    height: 52,
+    alignment: Alignment.center,
+    padding: const EdgeInsets.all(4),
+    decoration: BoxDecoration(
+      color: Colors.grey.shade100,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: raw.isEmpty
+        ? fallback
+        : Image.network(
+            FileDownloadUtil.resolveDownloadUrl(raw),
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => fallback,
+          ),
+  );
+}
+
 class _PaymentMethodPage extends StatefulWidget {
   final Package package;
   final PaymentController controller;
@@ -1270,13 +1333,14 @@ class _PaymentMethodPageState extends State<_PaymentMethodPage> {
                           ),
                         ),
                         child: ListTile(
-                          leading: Radio<PaymentMethod>(
-                            value: method,
-                            activeColor: Colors.blue.shade600,
-                          ),
+                          leading: _paymentMethodLogo(method),
                           title: Text(method.bankName),
                           subtitle: Text(
                             '${method.accountName} - ${method.accountNumber}',
+                          ),
+                          trailing: Radio<PaymentMethod>(
+                            value: method,
+                            activeColor: Colors.blue.shade600,
                           ),
                           onTap: () {
                             controller.changeSelectedPaymentMethod(method);

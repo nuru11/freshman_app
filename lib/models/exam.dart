@@ -8,21 +8,28 @@ class ExamGrouping {
   final int id;
   final String name;
   final int sortOrder;
+  final String? thumbnail;
+  final bool isLocked;
 
   const ExamGrouping({
     required this.id,
     required this.name,
     this.sortOrder = 0,
+    this.thumbnail,
+    this.isLocked = false,
   });
 
   factory ExamGrouping.fromJson(Map<String, dynamic> json) {
     final id = json['id'];
+    final thumbnail = json['thumbnail']?.toString().trim();
     return ExamGrouping(
       id: id is int ? id : int.parse(id.toString()),
       name: json['name']?.toString() ?? '',
       sortOrder: json['sort_order'] is int
           ? json['sort_order'] as int
           : int.tryParse('${json['sort_order']}') ?? 0,
+      thumbnail: thumbnail == null || thumbnail.isEmpty ? null : thumbnail,
+      isLocked: json['is_locked'] == true,
     );
   }
 
@@ -30,16 +37,60 @@ class ExamGrouping {
     'id': id,
     'name': name,
     'sort_order': sortOrder,
+    'thumbnail': thumbnail,
+    'is_locked': isLocked,
   };
 }
 
 ExamGrouping? examGroupingFromDynamic(Object? value) {
   if (value == null) return null;
+  if (value is ExamGrouping) return value;
   if (value is Map) {
     return ExamGrouping.fromJson(Map<String, dynamic>.from(value));
   }
-  if (value is ExamGrouping) return value;
   return null;
+}
+
+class ExamCategoryBrowse {
+  final int id;
+  final String name;
+  final int sortOrder;
+  final String? thumbnail;
+  final List<ExamGrouping> sections;
+
+  const ExamCategoryBrowse({
+    required this.id,
+    required this.name,
+    this.sortOrder = 0,
+    this.thumbnail,
+    this.sections = const [],
+  });
+
+  factory ExamCategoryBrowse.fromJson(Map<String, dynamic> json) {
+    final grouping = ExamGrouping.fromJson(json);
+    final rawSections = json['sections'];
+    final sections = rawSections is List
+        ? rawSections
+              .map(examGroupingFromDynamic)
+              .whereType<ExamGrouping>()
+              .toList()
+        : <ExamGrouping>[];
+    return ExamCategoryBrowse(
+      id: grouping.id,
+      name: grouping.name,
+      sortOrder: grouping.sortOrder,
+      thumbnail: grouping.thumbnail,
+      sections: sections,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'sort_order': sortOrder,
+    'thumbnail': thumbnail,
+    'sections': sections.map((section) => section.toJson()).toList(),
+  };
 }
 
 @JsonSerializable()

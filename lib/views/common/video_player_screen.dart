@@ -113,15 +113,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 child: _buildTopControls(theme, showFullscreen: false),
               );
             }),
-            Obx(() {
-              final label = controller.watermarkLabel;
-              if (!controller.isInitialized.value ||
-                  controller.isScreenCaptured.value ||
-                  label.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return Positioned.fill(child: MovingWatermark(label: label));
-            }),
             Obx(
               () => controller.isScreenCaptured.value
                   ? Positioned.fill(

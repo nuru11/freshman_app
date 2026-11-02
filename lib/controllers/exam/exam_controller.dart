@@ -17,12 +17,16 @@ class ExamBrowseGroup {
   final String name;
   final int sortOrder;
   final int count;
+  final String? thumbnail;
+  final bool isLocked;
 
   const ExamBrowseGroup({
     required this.id,
     required this.name,
     required this.sortOrder,
     required this.count,
+    this.thumbnail,
+    this.isLocked = false,
   });
 }
 
@@ -49,6 +53,8 @@ class ExamController extends GetxController {
 
   List<Exam> _exams = [];
   List<Exam> get exams => _exams;
+  List<ExamCategoryBrowse> _categories = [];
+  bool _categoriesFromApi = false;
   Set<int> _completedExamIds = {};
   Set<int> get completedExamIds => _completedExamIds;
 
@@ -166,6 +172,19 @@ class ExamController extends GetxController {
     return exams.where(_isExamScreenExam).toList();
   }
 
+  int? get _gradeId => _user?.grade.id;
+
+  Future<void> _restoreCachedCategories() async {
+    final cached = await _hiveExamStorage.getExamCategories(_gradeId);
+    if (cached.isEmpty) {
+      _categories = [];
+      _categoriesFromApi = false;
+      return;
+    }
+    _categories = cached;
+    _categoriesFromApi = true;
+  }
+
   Future<void> loadExams() async {
     _isLoading = true;
     _error = null;
@@ -176,17 +195,36 @@ class ExamController extends GetxController {
     try {
       if (!_isOffline) {
         final device = await UserDevice.getDeviceInfo(_user?.phoneNumber ?? '');
-        final grade = _user?.grade;
-        final exams_ = await _examService.getAvailableExams(
-          device.id,
-          gradeId: grade?.id,
-        );
-        await _hiveExamStorage.setExams(exams_);
+        final gradeId = _gradeId;
+        try {
+          final exams_ = await _examService.getAvailableExams(
+            device.id,
+            gradeId: gradeId,
+          );
+          await _hiveExamStorage.setExams(exams_);
+        } catch (e) {
+          // Keep exams already stored on the device.
+        }
+        try {
+          _categories = await _examService.getExamCategories(
+            gradeId: gradeId,
+            deviceId: device.id,
+          );
+          _categoriesFromApi = true;
+          await _hiveExamStorage.setExamCategories(gradeId, _categories);
+        } catch (e) {
+          await _restoreCachedCategories();
+        }
+      } else {
+        await _restoreCachedCategories();
       }
       _exams = await _visibleExams();
     } catch (e) {
+      if (!_categoriesFromApi) {
+        await _restoreCachedCategories();
+      }
       _exams = await _visibleExams();
-      if (!_isOffline && _exams.isEmpty) {
+      if (!_isOffline && _exams.isEmpty && !_categoriesFromApi) {
         _error = 'Failed to load exams. Please try again.';
         AppSnackbar.showError('Error', _error!);
       }
@@ -226,16 +264,73 @@ class ExamController extends GetxController {
     return _subjects[_selectedSubjectIndex].id;
   }
 
-  List<ExamBrowseGroup> get categoryGroups => _groupsFor(null);
+  List<ExamBrowseGroup> get categoryGroups {
+    if (!_categoriesFromApi) return _groupsFor(null);
+    return [
+      for (final category in _categories)
+        ExamBrowseGroup(
+          id: category.id,
+          name: category.name,
+          sortOrder: category.sortOrder,
+          count: _countExams(categoryId: category.id),
+          thumbnail: category.thumbnail,
+        ),
+    ];
+  }
 
   List<ExamBrowseGroup> sectionsForCategory({int? categoryId}) {
-    return _groupsFor(categoryId, sections: true);
+    if (!_categoriesFromApi || categoryId == null) {
+      return _groupsFor(categoryId, sections: true);
+    }
+    ExamCategoryBrowse? category;
+    for (final item in _categories) {
+      if (item.id == categoryId) {
+        category = item;
+        break;
+      }
+    }
+    final groups = <ExamBrowseGroup>[
+      for (final section in category?.sections ?? const <ExamGrouping>[])
+        ExamBrowseGroup(
+          id: section.id,
+          name: section.name,
+          sortOrder: section.sortOrder,
+          count: _countExams(categoryId: categoryId, sectionId: section.id),
+          isLocked: section.isLocked,
+        ),
+    ];
+    final unsectioned = _countExams(categoryId: categoryId, unsectioned: true);
+    if (unsectioned > 0) {
+      groups.add(
+        ExamBrowseGroup(
+          id: null,
+          name: generalSectionName,
+          sortOrder: 1 << 20,
+          count: unsectioned,
+        ),
+      );
+    }
+    return groups;
+  }
+
+  int _countExams({
+    required int categoryId,
+    int? sectionId,
+    bool unsectioned = false,
+  }) {
+    return _exams.where((exam) {
+      if (exam.examCategory?.id != categoryId) return false;
+      if (unsectioned) return exam.section == null;
+      if (sectionId == null) return true;
+      return exam.section?.id == sectionId;
+    }).length;
   }
 
   List<ExamBrowseGroup> _groupsFor(int? categoryId, {bool sections = false}) {
     final groups = <String, ExamBrowseGroup>{};
     final counts = <String, int>{};
     for (final exam in _exams) {
+      if (exam.examCategory == null) continue;
       if (sections) {
         final matchesCategory = categoryId == null
             ? exam.examCategory == null
@@ -255,6 +350,8 @@ class ExamController extends GetxController {
         name: grouping?.name ?? fallbackName,
         sortOrder: grouping?.sortOrder ?? 1 << 20,
         count: counts[key]!,
+        thumbnail: sections ? null : grouping?.thumbnail,
+        isLocked: sections && (grouping?.isLocked ?? false),
       );
     }
     final list = groups.values.toList()
@@ -269,6 +366,7 @@ class ExamController extends GetxController {
   List<Exam> examsInSection({int? categoryId, int? sectionId}) {
     final subjectId = _selectedSubjectId;
     return _exams.where((exam) {
+      if (exam.examCategory == null) return false;
       final matchesCategory = categoryId == null
           ? exam.examCategory == null
           : exam.examCategory?.id == categoryId;
@@ -307,7 +405,11 @@ class ExamController extends GetxController {
 
   Future<List<Exam>> searchExams(String query) async {
     return _exams
-        .where((e) => e.name.toLowerCase().contains(query.toLowerCase()))
+        .where(
+          (e) =>
+              e.examCategory != null &&
+              e.name.toLowerCase().contains(query.toLowerCase()),
+        )
         .toList();
   }
 

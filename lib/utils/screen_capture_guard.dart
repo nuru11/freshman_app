@@ -1,6 +1,5 @@
 import 'package:get/get.dart';
 import 'package:screen_protector/screen_protector.dart';
-import 'package:vector_academy/services/auth.dart';
 import 'package:vector_academy/utils/utils.dart';
 
 /// Blocks screenshots and system screen recording while a protected screen
@@ -13,15 +12,6 @@ class ScreenCaptureGuard {
   void Function()? onCaptureEnded;
 
   bool _closed = false;
-
-  String get watermarkLabel {
-    if (!Get.isRegistered<AuthService>()) return '';
-    final user = Get.find<AuthService>().user.value;
-    if (user == null) return '';
-    final phone = user.phoneNumber.trim();
-    if (phone.isNotEmpty) return phone;
-    return 'ID ${user.id}';
-  }
 
   Future<void> enable() async {
     _closed = false;

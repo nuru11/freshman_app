@@ -41,7 +41,6 @@ class PDFReaderController extends GetxController {
   final ScreenCaptureGuard captureGuard = ScreenCaptureGuard();
 
   RxBool get isScreenCaptured => captureGuard.isScreenCaptured;
-  String get watermarkLabel => captureGuard.watermarkLabel;
 
   PDFViewController? _pdfViewController;
   Timer? _hintTimer;
